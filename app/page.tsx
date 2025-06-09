@@ -7,7 +7,7 @@ export default function Page() {
       <a href={socialLinks.twitter} target="_blank">
         <Image
           src="/profile.png"
-          alt="Profile photo"
+          alt="Umair's Profile Photo"
           className="rounded-full bg-gray-100 block lg:mt-5 mt-0 lg:mb-5 mb-10 mx-auto sm:float-right sm:ml-5 sm:mb-5 grayscale hover:grayscale-0"
           unoptimized
           width={160}
@@ -16,48 +16,31 @@ export default function Page() {
         />
       </a>
       <h1 className="mb-8 text-2xl font-medium">
-        Portfolio template!
+        Umair — Cybersecurity Analyst & Red Team Operator
       </h1>
       <div className="prose prose-neutral dark:prose-invert">
         <p>
-          A clean, fast, and lightweight portfolio template built with Next.js,
-          Vercel, and Tailwind CSS.
+          I’m a cybersecurity professional with expertise in Red Teaming, Penetration Testing, and Digital Forensics. With a strong background in adversary simulation and vulnerability assessments, I specialize in identifying real-world threats and helping organizations strengthen their security posture.
         </p>
         <p>
-          Nextfolio has everything you need for a portfolio: MDX blog, SEO, RSS,
-          Atom & JSON feeds, analytics, Tweet & YouTube embeds, KaTeX and {""}
-          <a
-            target="_blank"
-            href="https://github.com/1msirius/Nextfolio?tab=readme-ov-file#features"
-          >
-            more
-          </a>
-          .
+          I’ve led the development of CTF challenges and infrastructure at AirOverflow, organized international cybersecurity competitions, and contributed to open-source tooling and secure development projects.
         </p>
         <p>
-          Nextfolio is{" "}
+          Some of my key achievements include winning the Hackmasters’24 (OIC CTF – Istanbul), becoming a finalist at BlackHat MEA’23 & ’24 (Riyadh), and leading national-level cybersecurity trainings at Bahria University under Ignite.
+        </p>
+        <p>
+          Certified in CRTO, and eCPPT. Active on platforms like Hack The Box and TryHackMe, where I regularly sharpen my skills through real-world simulation labs.
+        </p>
+        <p>
+          Connect with me on{" "}
           <a href={socialLinks.github} target="_blank">
-            open-source
+            GitHub
           </a>{" "}
-          and fully customizable, making it easy to add more features.
-        </p>
-        <p>
-          <a
-            href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2F1msirius%2FNextfolio"
-            target="_blank"
-          >
-            Deploy
+          or follow me on{" "}
+          <a href={socialLinks.twitter} target="_blank">
+            Twitter
           </a>{" "}
-          your Nextfolio site with Vercel in minutes and follow the set up
-          instructions in the{" "}
-          <a href="/blog/getting-started">Getting Started</a> post.
-        </p>
-        <p>
-          Built and maintained by{" "}
-          <a href="https://imsirius.xyz/" target="_blank">
-            Sirius
-          </a>
-          .
+          for updates and projects.
         </p>
       </div>
     </section>
