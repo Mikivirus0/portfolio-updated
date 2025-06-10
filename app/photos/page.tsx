@@ -11,34 +11,39 @@ export default function Photos() {
   return (
     <section>
       <h1 className="mb-8 text-2xl font-medium">Photo Dump</h1>
-      <p className="prose prose-neutral dark:prose-invert">
-  A curated collection of my favorite photos from various events, competitions, and memorable places where we’ve achieved remarkable wins and milestones.
-</p>
-<ImageGrid
-  coverImage={{
-    src: "/photos/photo6.jpg",
-    alt: "Winning at Hackmasters 2024",
-  }}
-  columns={3}
-  images={[
-    { src: "/photos/photo5.jpg", alt: "Event 1" },
-    { src: "/photos/photo5.jpg", alt: "Event 2" },
-    { src: "/photos/photo5.jpg", alt: "Event 3" },
-  ]}
-/>
+      <p className="prose prose-neutral dark:prose-invert mb-6">
+        A curated collection of my favorite photos from various events,
+        competitions, and memorable places where we’ve achieved remarkable wins
+        and milestones.
+      </p>
 
+      {/* Optional: Full-width cover image grid */}
+      <ImageGrid
+        coverImage={{
+          src: "/photos/photo6.jpg",
+          alt: "Winning at Hackmasters 2024",
+        }}
+        columns={3}
+        images={[
+          { src: "/photos/photo5.jpg", alt: "Event 1" },
+          { src: "/photos/photo5.jpg", alt: "Event 2" },
+          { src: "/photos/photo5.jpg", alt: "Event 3" },
+        ]}
+      />
+
+      {/* Grid with links and captions */}
       <ImageGrid
         columns={3}
         images={[
           {
             src: "/photos/photo1.jpg",
             alt: "Roman columns",
-            href: "https://unsplash.com/photos/people-walking-near-building-during-daytime-dFLBDQQeffU?utm_content=creditShareLink&utm_medium=referral&utm_source=unsplash",
+            href: "https://unsplash.com/photos/people-walking-near-building-during-daytime-dFLBDQQeffU",
           },
           {
             src: "/photos/photo2.jpg",
             alt: "Big Ben",
-            href: "https://unsplash.com/photos/big-ben-london-MdJq0zFUwrw?utm_content=creditShareLink&utm_medium=referral&utm_source=unsplash",
+            href: "https://unsplash.com/photos/big-ben-london-MdJq0zFUwrw",
           },
           {
             src: "/photos/photo3.jpg",
@@ -48,7 +53,7 @@ export default function Photos() {
           {
             src: "/photos/photo4.jpg",
             alt: "Eiffel Tower",
-            href: "https://unsplash.com/photos/the-eiffel-tower-towering-over-the-city-of-paris-OgPuPvPsHLM?utm_content=creditShareLink&utm_medium=referral&utm_source=unsplash",
+            href: "https://unsplash.com/photos/the-eiffel-tower-towering-over-the-city-of-paris-OgPuPvPsHLM",
           },
           {
             src: "/photos/photo5.jpg",
@@ -58,11 +63,12 @@ export default function Photos() {
           {
             src: "/photos/photo6.jpg",
             alt: "Colosseum",
-            href: "https://unsplash.com/photos/brown-concrete-building-under-blue-sky-during-daytime-3cyBR1rIJmA?utm_content=creditShareLink&utm_medium=referral&utm_source=unsplash",
+            href: "https://unsplash.com/photos/brown-concrete-building-under-blue-sky-during-daytime-3cyBR1rIJmA",
           },
         ]}
       />
 
+      {/* 2-column layout */}
       <ImageGrid
         columns={2}
         images={[
@@ -73,6 +79,7 @@ export default function Photos() {
         ]}
       />
 
+      {/* 4-column layout */}
       <ImageGrid
         columns={4}
         images={[
