@@ -16,14 +16,14 @@ export default function Photos() {
 </p>
 <ImageGrid
   coverImage={{
-    src: "/images/photo6.jpg",
+    src: "/photos/photo6.jpg",
     alt: "Winning at Hackmasters 2024",
   }}
   columns={3}
   images={[
-    { src: "/images/photo5.jpg", alt: "Event 1" },
-    { src: "/images/photo5.jpg", alt: "Event 2" },
-    { src: "/images/photo5.jpg", alt: "Event 3" },
+    { src: "/photos/photo5.jpg", alt: "Event 1" },
+    { src: "/photos/photo5.jpg", alt: "Event 2" },
+    { src: "/photos/photo5.jpg", alt: "Event 3" },
   ]}
 />
 
