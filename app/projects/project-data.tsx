@@ -9,19 +9,19 @@ export const projects: Project[] = [
   {
     title: "Sqlhound",
     year: 2025,
-    description: "A lightweight multithreaded SQL Injection (SQLi) vulnerability scanner using Bing dorking, subdomain enumeration, and custom URL lists.",
+    description: "Multithreaded SQLi scanner with Bing dorking and URL list support.",
     url: "https://github.com/Mikivirus0/sqlhound",
   },
   {
     title: "Subroot",
     year: 2025,
-    description: "Subroot is a high-performance subdomain scanner designed for security researchers and penetration testers. It leverages DNS resolution, HTTP requests, and ICMP pings to identify active subdomains efficiently.",
+    description: "Fast subdomain scanner using DNS, HTTP, and ICMP checks.",
     url: "https://github.com/Mikivirus0/SUBROOT",
   },
   {
     title: "Gradient Obfuscation",
     year: 2023,
-    description: "A Python program that combines three image processing techniques: denoising, enhancement, and style transfer, to obfuscate an input image.",
+    description: "Image obfuscation using denoising, enhancement, and style transfer.",
     url: "https://github.com/Mikivirus0/gradient-obfuscation",
   },
 ];
