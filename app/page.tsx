@@ -20,13 +20,13 @@ export default function Page() {
       </h1>
       <div className="prose prose-neutral dark:prose-invert">
         <p>
-          I’m a cybersecurity professional with expertise in Red Teaming, Penetration Testing, and Digital Forensics. With a strong background in adversary simulation and vulnerability assessments, I specialize in identifying real-world threats and helping organizations strengthen their security posture.
+          I’m a cybersecurity professional with expertise in Vulnerability Analysis & Penetration Testing, Security Analysis, and Digital Forensics and Incident Response (DFIR). I specialize in identifying real-world threats and helping organizations strengthen their security posture.
         </p>
         <p>
-          I’m currently pursuing my MS in Cyber Security from <strong>Air University</strong>, where I’m further enhancing my technical depth and research capability in advanced topics like threat intelligence, malware analysis, and cloud security.
+          I’m currently pursuing my MS in Cyber Security from <strong>Air University</strong>, where I’m further enhancing my technical depth and research capability in advanced topics integrations of AI in threat intelligence, security analysis, and cloud security.
         </p>
         <p>
-          I’ve led the development of CTF challenges and infrastructure at AirOverflow, organized international cybersecurity competitions, and contributed to open-source tooling and secure development projects.
+          I’ve actively participated in and helped organize CTF competitions with AirOverflow, led the development of challenges and supporting infrastructure, and contributed to open-source security tools and secure development initiatives.
         </p>
         <p>
           Some of my key achievements include winning the Hackmasters’24 (OIC CTF – Istanbul), becoming a finalist at BlackHat MEA’23 & ’24 (Riyadh), winning 20+ national level hackathons and leading national-level cybersecurity trainings at Bahria University under Ignite.
