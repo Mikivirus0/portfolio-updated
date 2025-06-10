@@ -4,7 +4,7 @@ export const metaData = {
   name: "MikiVirus",
   ogImage: "/opengraph-image.png",
   description:
-    "Theme From nextfolio-template.vercel.app",
+    "mikivirus.me",
 };
 
 export const socialLinks = {
