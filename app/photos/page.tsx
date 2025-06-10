@@ -14,12 +14,19 @@ export default function Photos() {
       <p className="prose prose-neutral dark:prose-invert">
   A curated collection of my favorite photos from various events, competitions, and memorable places where we’ve achieved remarkable wins and milestones.
 </p>
-      <ImageGrid
-              columns={1}
-              images={[
-                { src: "/photos/photo5.jpg", alt: "Eiffel Tower" }
-              ]}
-            />
+<ImageGrid
+  coverImage={{
+    src: "/images/photo6.jpg",
+    alt: "Winning at Hackmasters 2024",
+  }}
+  columns={3}
+  images={[
+    { src: "/images/photo5.jpg", alt: "Event 1" },
+    { src: "/images/photo5.jpg", alt: "Event 2" },
+    { src: "/images/photo5.jpg", alt: "Event 3" },
+  ]}
+/>
+
       <ImageGrid
         columns={3}
         images={[

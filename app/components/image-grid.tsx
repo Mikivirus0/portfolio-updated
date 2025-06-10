@@ -7,12 +7,17 @@ interface ImageGridProps {
     alt: string;
     href?: string;
   }[];
-  columns?: 2 | 3 | 4; // Accepts 2, 3, or 4 columns
+  columns?: 2 | 3 | 4;
+  coverImage?: {
+    src: string;
+    alt: string;
+  };
 }
 
 export const ImageGrid: React.FC<ImageGridProps> = ({
   images,
   columns = 3,
+  coverImage,
 }) => {
   const gridClass = {
     2: "grid-cols-2 sm:grid-cols-2",
@@ -22,7 +27,19 @@ export const ImageGrid: React.FC<ImageGridProps> = ({
 
   return (
     <section>
-      <div className={`grid ${gridClass} gap-4 my-8`}>
+      {coverImage && (
+        <div className="relative w-full aspect-[3/1] mb-8">
+          <Image
+            alt={coverImage.alt}
+            src={coverImage.src}
+            fill
+            priority
+            className="rounded-xl object-cover"
+          />
+        </div>
+      )}
+
+      <div className={`grid ${gridClass} gap-4`}>
         {images.map((image, index) => (
           <div key={index} className="relative aspect-square">
             {image.href ? (
