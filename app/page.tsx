@@ -19,21 +19,7 @@ export default function Page() {
         Umair — Cybersecurity Analyst
       </h1>
       <div className="prose prose-neutral dark:prose-invert">
-        <p>
-          I’m a cybersecurity professional with expertise in Vulnerability Analysis & Penetration Testing, Security Analysis, and Digital Forensics and Incident Response (DFIR). I specialize in identifying real-world threats and helping organizations strengthen their security posture.
-        </p>
-        <p>
-          I’m currently pursuing my MS in Cyber Security from <strong>Air University</strong>, where I’m further enhancing my technical depth and research capability in advanced topics integrations of AI in threat intelligence, security analysis, and cloud security.
-        </p>
-        <p>
-          I’ve actively participated in and helped organize CTF competitions with AirOverflow, led the development of challenges and supporting infrastructure, and contributed to open-source security tools and secure development initiatives.
-        </p>
-        <p>
-          Some of my key achievements include winning the Hackmasters’24 (OIC CTF – Istanbul), becoming a finalist at BlackHat MEA’23 & ’24 (Riyadh), winning 20+ national level hackathons and leading national-level cybersecurity trainings at Bahria University under Ignite.
-        </p>
-        <p>
-          Certified in CRTO, and eCPPT. Active on platforms like Hack The Box and TryHackMe, where I regularly sharpen my skills through real-world simulation labs.
-        </p>
+      <div className="prose prose-neutral dark:prose-invert"> <ul className="list-disc space-y-3 ml-6"> <li> <strong>Cybersecurity Professional</strong> specializing in: <ul className="list-disc ml-6"> <li>Vulnerability Assessment & Penetration Testing (VAPT)</li> <li>Digital Forensics & Incident Response (DFIR)</li> <li>Security Operations & Threat Hunting</li> </ul> </li> <li> <strong>MS Cyber Security Candidate</strong> at <strong>Air University</strong>, with research focus in: <ul className="list-disc ml-6"> <li>AI-Powered Threat Intelligence</li> <li>Cloud Security & Infrastructure Hardening</li> <li>Adversarial Machine Learning</li> </ul> </li> <li> <strong>CTF Contributor & Community Builder</strong>: <ul className="list-disc ml-6"> <li>Core team member at <strong>AirOverflow</strong></li> <li>Designed CTF challenges and built infrastructure</li> <li>Supported open-source security tooling & DevSecOps practices</li> </ul> </li> <li> <strong>Awards & Recognitions</strong>: <ul className="list-disc ml-6"> <li>🏆 Winner — <strong>Hackmasters'24</strong> (OIC CTF, Istanbul)</li> <li>🏅 Finalist — <strong>BlackHat MEA</strong> ’23 & ’24 (Riyadh)</li> <li>🥇 20+ national hackathon victories</li> <li>🧑‍🏫 Led national-level trainings under <strong>Ignite</strong> at Bahria University</li> </ul> </li> <li> <strong>Certifications:</strong> CRTO, eCPPT </li> <li> <strong>Platforms:</strong> Actively sharpening skills on <strong>Hack The Box</strong> & <strong>TryHackMe</strong> through real-world labs and scenarios. </li> </ul> </div>
         <p>
           Connect with me on{" "}
           <a href={socialLinks.github} target="_blank">
