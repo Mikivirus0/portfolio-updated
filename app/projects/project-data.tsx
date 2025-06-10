@@ -22,7 +22,7 @@ export const projects: Project[] = [
     title: "MalwareMaster",
     year: 2024,
     description: "The cutting-edge solution for detecting malicious JavaScript in PDF files",
-    url: "https://github.com/Mikivirus0/gradient-obfuscation",
+    url: "https://malware-master.vercel.app/",
   },
   {
     title: "Gradient Obfuscation",
