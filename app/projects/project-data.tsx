@@ -19,6 +19,12 @@ export const projects: Project[] = [
     url: "https://github.com/Mikivirus0/SUBROOT",
   },
   {
+    title: "MalwareMaster",
+    year: 2024,
+    description: "The cutting-edge solution for detecting malicious JavaScript in PDF files",
+    url: "https://github.com/Mikivirus0/gradient-obfuscation",
+  },
+  {
     title: "Gradient Obfuscation",
     year: 2023,
     description: "Image obfuscation using denoising, enhancement, and style transfer.",
