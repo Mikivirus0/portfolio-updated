@@ -52,13 +52,16 @@ Successful penetration testers:
 
 ---
 
-## 📝 Real-World Case: Exploiting a Misconfigured Web Server
+## 📝 Real-World Case: Bypassing Authentication to Access Admin Panel
 
-During an internal test, I found a **misconfigured Nginx reverse proxy** exposing the admin panel of a CMS. Using `Burp Suite` and `ffuf`, I fuzzed the endpoints and retrieved credentials in a backup archive.
+Let’s take a simple, relatable example — you’re on an internal engagement, and you find a web app running behind **Nginx reverse proxy**. You try accessing the usual login page… nothing special. But then curiosity kicks in.
 
-![Burp Suite Auth Bypass Screenshot](/images/burpsuite-bypass.png)
+> 🤔 "What if I just try going directly to `/admin/dashboard.php`?"
 
-I reported it immediately with a **critical severity**, and remediation involved properly restricting the endpoint behind VPN access.
+You hit enter and — boom — you’re in. No login, no session, nothing.
+
+```bash
+https://target-site.com/admin/dashboard.php
 
 ---
 
