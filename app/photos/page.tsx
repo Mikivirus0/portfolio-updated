@@ -10,7 +10,16 @@ export const metadata: Metadata = {
 export default function Photos() {
   return (
     <section>
-      <h1 className="mb-8 text-2xl font-medium">Photos</h1>
+      <h1 className="mb-8 text-2xl font-medium">Photo Dump</h1>
+      <p className="prose prose-neutral dark:prose-invert">
+  A curated collection of my favorite photos from various events, competitions, and memorable places where we’ve achieved remarkable wins and milestones.
+</p>
+      <ImageGrid
+              columns={1}
+              images={[
+                { src: "/photos/photo5.jpg", alt: "Eiffel Tower" }
+              ]}
+            />
       <ImageGrid
         columns={3}
         images={[
