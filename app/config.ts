@@ -4,7 +4,7 @@ export const metaData = {
   name: "MikiVirus",
   ogImage: "/opengraph-image.png",
   description:
-    "mikivirus.me",
+    "Umair Sabir — offensive-security operator. OSCP, OSED in progress. Tools, writeups, exploits.",
 };
 
 export const socialLinks = {

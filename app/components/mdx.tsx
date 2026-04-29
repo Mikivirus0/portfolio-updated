@@ -7,6 +7,7 @@ import { TweetComponent } from "./tweet";
 import { CaptionComponent } from "./caption";
 import { YouTubeComponent } from "./youtube";
 import { ImageGrid } from "./image-grid";
+import { Diagram, Terminal, KillChain, PullQuote, Marginalia } from "./diagram";
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
@@ -109,6 +110,11 @@ let components = {
   h6: createHeading(6),
   Image: RoundedImage,
   ImageGrid,
+  Diagram,
+  Terminal,
+  KillChain,
+  PullQuote,
+  Marginalia,
   a: CustomLink,
   StaticTweet: TweetComponent,
   Caption: CaptionComponent,

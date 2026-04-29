@@ -1,94 +1,201 @@
 ---
-title: "How I Approach Real-World Penetration Tests"
-publishedAt: "2025-06-10"
-summary: "A detailed walkthrough of how I conduct real-world penetration tests — including tools, techniques, ethical mindset, and practical tips for professionals and students."
-tags: "Penetration Testing, Cybersecurity, Ethical Hacking"
+title: "How I Approach Real-World Pentests (Methodology + Toolkit)"
+publishedAt: "2025-12-04"
+summary: "My personal methodology for external + internal pentests — the phases, the tools per phase, the documentation cadence, and a worked example walking from recon to admin-panel takeover."
+tags: "Penetration Testing, Methodology, Pentest"
 ---
 
-Penetration testing is more than just exploiting systems — it's about **thinking like an attacker while acting like a professional**. In this post, I’ll share my personal methodology for approaching real-world penetration tests, the tools I use, and the mindset that guides my ethical decisions.
+Penetration testing isn't just running tools. It's the order in which you run them, the notes you take while doing it, and what you do **between** the tool runs that separates a useful report from a glorified Nessus dump.
 
----
+This is my actual workflow for a typical 5-day external + internal engagement. It's PTES-flavoured but trimmed to fit how I actually work in practice.
 
-## 🧭 The Penetration Testing Lifecycle
+## The phases (my version)
 
-Understanding the **phases of a penetration test** is crucial. I typically follow a structure similar to the PTES (Penetration Testing Execution Standard):
+<KillChain steps={[
+  { label: "Recon", tool: "OSINT" },
+  { label: "Map", tool: "Nmap / Burp" },
+  { label: "Enum", tool: "service-specific" },
+  { label: "Exploit", tool: "validated PoC" },
+  { label: "Post-Ex", tool: "BH / CME" },
+  { label: "Report", tool: "markdown + screenshots" },
+]} />
 
-<Table
-  data={{
-    headers: ["Phase", "Description"],
-    rows: [
-      ["Reconnaissance", "Gathering OSINT and target data."],
-      ["Scanning", "Identifying live hosts, open ports, services."],
-      ["Enumeration", "Extracting more detailed information about systems."],
-      ["Exploitation", "Gaining unauthorized access."],
-      ["Post-Exploitation", "Privilege escalation, lateral movement."],
-      ["Reporting", "Documenting findings, impacts, and mitigations."],
-    ],
-  }}
-/>
+I keep them strictly sequential per *target* but parallel across targets. While my Nmap is sweeping the /22, I'm reading the org's job postings to map their tech stack.
 
-> 💡 **Tip**: Never skip proper documentation. It’s your strongest deliverable.
+## Phase 1 — Recon (OSINT)
 
----
+The cheapest hour you'll spend on the engagement.
 
-## 🛠️ My Favorite Tools by Phase
+<Table data={{
+  headers: ["Goal", "Tool", "What I'm looking for"],
+  rows: [
+    ["Subdomains", "amass + subroot + crt.sh", "forgotten staging, dev mirrors"],
+    ["Tech fingerprint", "Wappalyzer + httpx", "stack version → CVE mapping"],
+    ["Email enum", "theHarvester + hunter.io", "user format for spraying later"],
+    ["Public breaches", "DeHashed / Snusbase", "reused creds"],
+    ["GitHub leaks", "TruffleHog + custom dorks", "API keys, internal endpoints"],
+    ["S3 / blob storage", "S3Scanner + cloud_enum", "open buckets"],
+  ]
+}} />
 
-Here’s a list of tools I use in each phase:
+The single most valuable signal in this phase: **what's the user format?** `firstname.lastname@`, `flastname@`, `f.lastname@`. Pin that and password sprays are 5x more effective.
 
-<Table
-  data={{
-    headers: ["Phase", "Tools Used"],
-    rows: [
-      ["Reconnaissance", "theHarvester, Shodan, Amass, SpiderFoot"],
-      ["Scanning", "Nmap, Masscan, RustScan"],
-      ["Enumeration", "Nmap NSE, Enum4linux, LDAPSearch, Nikto"],
-      ["Exploitation", "Metasploit, SQLMap, Burp Suite, Impacket"],
-      ["Post-Exploitation", "Mimikatz, BloodHound, Empire, CrackMapExec"],
-      ["Reporting", "CherryTree, Dradis, Markdown with screenshots"],
-    ],
-  }}
-/>
+## Phase 2 — Mapping
 
----
-
-## 🧠 The Mindset: Think Like an Attacker, Report Like an Analyst
-
-Successful penetration testers:
-- **Follow scope religiously** — never test beyond authorized assets.
-- **Take detailed notes** — logs, screenshots, and timestamps matter.
-- **Communicate risks, not just vulnerabilities** — how could a real attacker leverage what you found?
-
-> 📌 Ethical integrity is non-negotiable. A good pentest doesn’t harm — it hardens.
-
----
-
-## 📝 Real-World Case: Bypassing Authentication to Access Admin Panel
-
-Let’s take a simple, relatable example — you’re on an internal engagement, and you find a web app running behind **Nginx reverse proxy**. You try accessing the usual login page… nothing special. But then curiosity kicks in.
-
-> 🤔 "What if I just try going directly to `/admin/dashboard.php`?"
-
-You hit enter and — boom — you’re in. No login, no session, nothing. (i know it was a lame example, just tryna tell you guys that everything is possible believe me :D)
+Now I have a target list. Time to find what's *alive* and what *services* it speaks.
 
 ```bash
-https://target-site.com/admin/dashboard.php
+# fast TCP discovery on a /22 — 90 seconds
+masscan 10.20.0.0/22 -p1-65535 --rate=20000 -oG masscan.gpn
+
+# convert masscan output → nmap-friendly target list
+awk '/Host:/ {print $2}' masscan.gpn | sort -u > alive.txt
+
+# detailed enum on what masscan found
+nmap -sV -sC -p- -Pn -iL alive.txt --open -oA nmap/full
 ```
----
 
-## 🔍 Pro Tips
+> **Tip from too many engagements:** the `--open` flag on Nmap is the difference between a scan I can read and a 14-megabyte file of `closed` lines I cannot.
 
-- Always **verify vulnerabilities manually**, don’t blindly trust scanners.
-- **Simulate post-exploitation** in a controlled way — prove impact.
-- **Use virtual labs** (like Hack The Box, TryHackMe, or your own) to stay sharp.
+## Phase 3 — Enumeration (where the actual work happens)
 
----
+Per-service enumeration is what separates a junior tester from a senior one. The mindset is *"what does this service let me do without authenticating, and what does it let me do with credentials I haven't proven yet?"*
 
-## ✅ Summary
+<Diagram num="1" caption="Per-service decision tree. The same questions, applied to every open port.">
+  <svg viewBox="0 0 720 280" width="100%" style={{ maxWidth: 720, color: "var(--ink)" }} xmlns="http://www.w3.org/2000/svg">
+    <g fontFamily="Newsreader, Georgia, serif" fontSize="12">
+      <rect x="280" y="20" width="160" height="40" fill="var(--paper)" stroke="var(--accent)" strokeWidth="1.4" />
+      <text x="360" y="44" fill="var(--accent)" textAnchor="middle" fontWeight="700">open service</text>
 
-Penetration testing is a craft — it demands both technical skill and ethical discipline. Following a clear methodology and documenting your work will separate you from the amateurs.
+      <rect x="40" y="100" width="180" height="40" fill="var(--paper)" stroke="var(--accent-2)" strokeWidth="1.2" />
+      <text x="130" y="124" fill="currentColor" textAnchor="middle">unauth → version → CVE</text>
 
-> 🔐 “Hacking isn't about breaking systems; it's about understanding them better than their creators.”
+      <rect x="270" y="100" width="180" height="40" fill="var(--paper)" stroke="var(--accent-2)" strokeWidth="1.2" />
+      <text x="360" y="124" fill="currentColor" textAnchor="middle">guest creds / null session</text>
 
----
+      <rect x="500" y="100" width="180" height="40" fill="var(--paper)" stroke="var(--accent-2)" strokeWidth="1.2" />
+      <text x="590" y="124" fill="currentColor" textAnchor="middle">spray reused creds</text>
 
-Want to learn about common mistakes beginners make in pentesting? [Read my next blog →](./top-10-penetration-testing-mistakes)
+      <rect x="40" y="180" width="180" height="40" fill="var(--paper)" stroke="currentColor" strokeWidth="1.2" />
+      <text x="130" y="204" fill="currentColor" textAnchor="middle" fontStyle="italic">PoC + manual confirm</text>
+
+      <rect x="270" y="180" width="180" height="40" fill="var(--paper)" stroke="currentColor" strokeWidth="1.2" />
+      <text x="360" y="204" fill="currentColor" textAnchor="middle" fontStyle="italic">enumerate as low-priv</text>
+
+      <rect x="500" y="180" width="180" height="40" fill="var(--paper)" stroke="currentColor" strokeWidth="1.2" />
+      <text x="590" y="204" fill="currentColor" textAnchor="middle" fontStyle="italic">log valid pair → next phase</text>
+
+      <line x1="340" y1="60"  x2="170" y2="100" stroke="currentColor" strokeWidth="1.1" />
+      <line x1="360" y1="60"  x2="360" y2="100" stroke="currentColor" strokeWidth="1.1" />
+      <line x1="380" y1="60"  x2="550" y2="100" stroke="currentColor" strokeWidth="1.1" />
+      <line x1="130" y1="140" x2="130" y2="180" stroke="var(--accent)" strokeWidth="1.1" />
+      <line x1="360" y1="140" x2="360" y2="180" stroke="var(--accent)" strokeWidth="1.1" />
+      <line x1="590" y1="140" x2="590" y2="180" stroke="var(--accent)" strokeWidth="1.1" />
+    </g>
+  </svg>
+</Diagram>
+
+A non-exhaustive list of my favourite per-service enumerators:
+
+<Table data={{
+  headers: ["Service", "First-pass tool", "Second-pass tool"],
+  rows: [
+    ["HTTP", "feroxbuster + nuclei", "Burp + manual"],
+    ["SMB", "smbmap + crackmapexec", "manual mount + grep"],
+    ["LDAP", "ldapdomaindump", "ldapsearch + bloodyAD"],
+    ["MSSQL", "mssqlclient.py", "manual T-SQL via sqsh"],
+    ["NFS", "showmount + nfs-ls", "manual mount, watch UID"],
+    ["FTP", "anonymous? then mirror -R", "test PUT, look for cron"],
+    ["RDP", "rdesktop -u guest", "BlueKeep check (CVE-2019-0708)"],
+  ]
+}} />
+
+## Phase 4 — Exploitation (with manual validation)
+
+The single rule: **never blindly run a Metasploit module against a production target**. I read the module source first. Yes, every time. If a module says `target: linux/http/some_app`, I want to know it isn't going to overwrite a config file.
+
+For commodity vulns I keep a small folder of hand-curated PoCs that I trust:
+
+```bash
+# personal exploit collection — read before running
+$ tree ~/exploits/
+~/exploits/
+├── log4shell/
+│   ├── README.md   ← my notes on what works
+│   ├── jndi.py     ← my fork, no callback to attacker.com
+│   └── payloads/
+├── confluence/
+└── ...
+```
+
+> 🔐 If you can't explain to a customer *what the exploit does to their server*, don't run it. Refusing is professional. Crashing prod is not.
+
+## Phase 5 — Post-exploitation
+
+This is where most of my time goes on internal engagements. Phase 4 might take 30 minutes. Phase 5 takes three days. Almost all of it is data collection and pivot mapping — I covered the AD-specific version of this in [Active Directory Attack Paths](/blog/active-directory-attack-paths).
+
+The minimum I want before I leave a host:
+
+- Local hashes (`secretsdump.py -local`)
+- Recently logged-on users (LSASS dump, Mimikatz)
+- Cached domain credentials (DCC2 hashes from registry)
+- Schtasks / cron / WMI subscriptions (for persistence audit)
+- Network reachability map (`nmap` from this host's perspective)
+
+## Phase 6 — Reporting
+
+A finding is not a finding until it has:
+
+1. **Evidence** — screenshot or HTTP transcript with timestamps.
+2. **Reproduction** — exact command, exact payload.
+3. **Impact** — what does an attacker do with this? Don't write *"information disclosure"*; write *"attacker reads `/etc/passwd` enabling username enumeration for password spraying"*.
+4. **Remediation** — concrete, vendor-specific fix.
+
+I write reports in Markdown, render to PDF via Pandoc + a custom Lua template. Sample header per finding:
+
+<Terminal title="finding-template.md">
+{`## CRITICAL — Authentication bypass via direct object access
+
+| Field        | Value                                              |
+|--------------|----------------------------------------------------|
+| Affects      | https://target.example.com/admin/dashboard.php     |
+| CVSS 3.1     | 9.1 (AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N)          |
+| Discovered   | 2025-11-14 14:22 UTC                               |
+| Status       | Confirmed via 2 reproduction attempts              |
+
+### Repro
+1. From an unauthenticated browser, GET /admin/dashboard.php
+2. Server returns 200 with admin UI fully rendered
+
+### Impact
+[...]`}
+</Terminal>
+
+## A worked example: bypassing auth by guessing the URL
+
+This is a sanitised version of a real engagement. A web app behind Nginx; the login page worked exactly as you'd expect. I noticed in the JS bundle a reference to `/admin/dashboard.php` — but the link was hidden behind a `role === 'admin'` check.
+
+What if there was no server-side check? I just typed it in:
+
+<Terminal title="curl@kali">
+{`$ curl -s -o /dev/null -w "%{http_code}\\n" \\
+    https://target-site.com/admin/dashboard.php
+200
+
+$ curl -s https://target-site.com/admin/dashboard.php | grep -i 'logout\\|admin panel' | head
+<a href="/admin/logout.php">Logout</a>
+<h1 class="page-title">Admin Panel</h1>`}
+</Terminal>
+
+That's it. No exploit. No payload. Just a missing `requireAuth()` middleware on a route the developer assumed nobody would type.
+
+> The lesson isn't *"old apps are bad"*. The lesson is **server-side authorization is non-negotiable** and the URL is the most accessible attack surface in your application.
+
+## TL;DR
+
+- **Phase order matters more than tool choice.** Most beginners skip recon and pay for it in phase 4.
+- **Manual validate everything.** Tools lie. Reports based on tool output without manual confirm get junior testers fired.
+- **Documentation is the deliverable.** The shell is for you. The report is for the customer.
+- **Stay legal.** Scope, scope, scope.
+
+If you want the offensive flavour applied to AD specifically, my [Active Directory Attack Paths](/blog/active-directory-attack-paths) post is the natural next read. Common beginner traps live in [Top 10 Pentesting Mistakes](/blog/top-10-penetration-testing-mistakes).

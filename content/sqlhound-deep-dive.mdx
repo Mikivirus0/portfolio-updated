@@ -1,0 +1,164 @@
+---
+title: "Building Sqlhound: A Multithreaded SQLi Scanner That Doesn't Get Bored"
+publishedAt: "2026-02-08"
+summary: "Why I built my own SQL injection scanner instead of pointing sqlmap at a list, what the architecture looks like, and the three bugs that ate a week of my life."
+tags: "Tooling, SQLi, Python, OSS"
+---
+
+I have a complicated relationship with `sqlmap`. It's the best at what it does. It's also slow, noisy, and pathologically determined to confirm a false positive on every parameter it touches.
+
+Two years of bug-bounty work later, I needed something different: a scanner that takes **a list of 50,000 URLs** and tells me, in 20 minutes, which ones might be injectable enough to hand off to sqlmap for the deep dig. So I built [`sqlhound`](https://github.com/Mikivirus0/sqlhound).
+
+This post is the architecture writeup — what's inside, why it's structured this way, and the three bugs I'd tell my past self about before I started.
+
+## What it does (in one picture)
+
+<Diagram num="1" caption="Sqlhound pipeline. Each phase is independently parallelised so the slow ones do not block the fast ones.">
+  <svg viewBox="0 0 720 320" width="100%" style={{ maxWidth: 720, color: "var(--ink)" }} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 Z" fill="var(--accent)" />
+      </marker>
+    </defs>
+    <g fontFamily="Newsreader, Georgia, serif" fontSize="12">
+      <rect x="20" y="20" width="160" height="60" fill="var(--paper)" stroke="var(--accent-2)" strokeWidth="1.2" />
+      <text x="100" y="42" fill="var(--accent-2)" textAnchor="middle" fontWeight="700">INPUT</text>
+      <text x="100" y="58" fill="currentColor" textAnchor="middle" fontSize="10">Bing dork OR url-list</text>
+      <text x="100" y="72" fill="#8A7E6C" textAnchor="middle" fontSize="10" fontStyle="italic">--dork / --list</text>
+
+      <rect x="220" y="20" width="160" height="60" fill="var(--paper)" stroke="currentColor" strokeWidth="1.2" />
+      <text x="300" y="42" fill="currentColor" textAnchor="middle" fontWeight="700">QUEUE</text>
+      <text x="300" y="58" fill="currentColor" textAnchor="middle" fontSize="10">asyncio.Queue (bounded)</text>
+      <text x="300" y="72" fill="#8A7E6C" textAnchor="middle" fontSize="10" fontStyle="italic">backpressure built-in</text>
+
+      <rect x="420" y="20" width="160" height="60" fill="var(--paper)" stroke="currentColor" strokeWidth="1.2" />
+      <text x="500" y="42" fill="currentColor" textAnchor="middle" fontWeight="700">FILTER</text>
+      <text x="500" y="58" fill="currentColor" textAnchor="middle" fontSize="10">URL has ?param=value</text>
+      <text x="500" y="72" fill="#8A7E6C" textAnchor="middle" fontSize="10" fontStyle="italic">drop static, sort by host</text>
+
+      <rect x="620" y="20" width="80" height="60" fill="var(--paper)" stroke="var(--accent)" strokeWidth="1.4" />
+      <text x="660" y="48" fill="var(--accent)" textAnchor="middle" fontWeight="700">DEDUP</text>
+      <text x="660" y="64" fill="#8A7E6C" textAnchor="middle" fontSize="10" fontStyle="italic">host+path</text>
+
+      <rect x="20" y="140" width="220" height="80" fill="var(--paper)" stroke="currentColor" strokeWidth="1.2" />
+      <text x="130" y="162" fill="currentColor" textAnchor="middle" fontWeight="700">PROBE WORKERS (N)</text>
+      <text x="130" y="180" fill="currentColor" textAnchor="middle" fontSize="10">tautology · time-based · error-based</text>
+      <text x="130" y="195" fill="#8A7E6C" textAnchor="middle" fontSize="10" fontStyle="italic">aiohttp · 200/host concurrency cap</text>
+      <text x="130" y="210" fill="#8A7E6C" textAnchor="middle" fontSize="10" fontStyle="italic">domain-aware token bucket</text>
+
+      <rect x="280" y="140" width="200" height="80" fill="var(--paper)" stroke="var(--accent-2)" strokeWidth="1.2" />
+      <text x="380" y="162" fill="var(--accent-2)" textAnchor="middle" fontWeight="700">CLASSIFIER</text>
+      <text x="380" y="180" fill="currentColor" textAnchor="middle" fontSize="10">resp diff &gt; 0.92 cosine</text>
+      <text x="380" y="195" fill="#8A7E6C" textAnchor="middle" fontSize="10" fontStyle="italic">+ keyword sentinel</text>
+      <text x="380" y="210" fill="#8A7E6C" textAnchor="middle" fontSize="10" fontStyle="italic">false-pos &lt; 5%</text>
+
+      <rect x="520" y="140" width="180" height="80" fill="var(--paper)" stroke="var(--accent)" strokeWidth="1.4" />
+      <text x="610" y="162" fill="var(--accent)" textAnchor="middle" fontWeight="700">SINK</text>
+      <text x="610" y="180" fill="currentColor" textAnchor="middle" fontSize="10">JSON-lines</text>
+      <text x="610" y="195" fill="#8A7E6C" textAnchor="middle" fontSize="10" fontStyle="italic">stdout + ./loot/*.json</text>
+      <text x="610" y="210" fill="#8A7E6C" textAnchor="middle" fontSize="10" fontStyle="italic">resumable</text>
+
+      <line x1="180" y1="50" x2="218" y2="50" stroke="currentColor" strokeWidth="1.1" markerEnd="url(#arr4)" />
+      <line x1="380" y1="50" x2="418" y2="50" stroke="currentColor" strokeWidth="1.1" markerEnd="url(#arr4)" />
+      <line x1="580" y1="50" x2="618" y2="50" stroke="currentColor" strokeWidth="1.1" markerEnd="url(#arr4)" />
+      <line x1="660" y1="80" x2="130" y2="138" stroke="var(--accent)" strokeWidth="1.2" markerEnd="url(#arr4)" />
+      <line x1="240" y1="180" x2="278" y2="180" stroke="currentColor" strokeWidth="1.1" markerEnd="url(#arr4)" />
+      <line x1="480" y1="180" x2="518" y2="180" stroke="currentColor" strokeWidth="1.1" markerEnd="url(#arr4)" />
+    </g>
+  </svg>
+</Diagram>
+
+Five small pieces, one big idea: **the things that are fast (parsing, filtering) shouldn't wait on the things that are slow (HTTP)**. asyncio + a bounded queue per phase gives you that for free.
+
+## Why not just use sqlmap?
+
+Sqlmap is a *confirmation* tool. It's optimised for going deep on one parameter — finding the DBMS, dumping tables, raising privileges. It's not optimised for the fan-out problem of *"here are 50k URLs, which 40 are interesting?"*
+
+Run sqlmap across that list and you'll discover the answer is "all of them, eventually, after three days". Sqlhound's job is to be the dirty filter that hands sqlmap a 50-URL shortlist with `<5%` false-positives.
+
+## Detection: three orthogonal signals
+
+A response classifier that only checks for `"You have an error in your SQL syntax"` is shockingly bad. WAFs strip that string. ORMs swallow it. Modern apps return generic 500s.
+
+Sqlhound triangulates with three signals and only flags a hit when **at least two** agree:
+
+1. **Boolean tautology diff.** Send `?id=1` vs `?id=1' AND '1'='1` vs `?id=1' AND '1'='2`. If responses 1 and 2 are nearly identical and response 3 is different, that's a strong signal. We use cosine similarity on a stripped-down DOM (no scripts, no analytics).
+2. **Time-based.** `?id=1' AND SLEEP(4)--` vs baseline. Anything `> 3.5s` over baseline mean is a hit. We sleep-test only on URLs that already triggered signal 1 — sleep tests are loud and slow.
+3. **Sentinel substring.** Inject a unique marker (`SQLH_${uuid4()}`) into the parameter and look for it reflected verbatim in the response. Catches cases where the app reflects unsanitised input — useful for chained findings even when SQLi itself is blind.
+
+```python
+def is_likely_injectable(probes: ProbeResults) -> tuple[bool, list[str]]:
+    reasons = []
+    if probes.cos_diff_true_vs_false > 0.08:
+        reasons.append("boolean")
+    if probes.delta_seconds > 3.5:
+        reasons.append("time")
+    if probes.marker_reflected:
+        reasons.append("reflection")
+    return len(reasons) >= 2, reasons
+```
+
+Two-of-three is the cheapest way to keep false-positives below 5% on real-world traffic. I tuned it on a labelled corpus of 1,200 URLs (~140 known-injectable). Single-signal mode hovered around 18% FPR; two-of-three landed at 3.8%.
+
+## The bugs that ate a week
+
+### Bug 1 — connection reuse poisoning
+
+I was getting bizarre intermittent results: same URL, same payload, sometimes a hit, sometimes nothing. Turned out aiohttp was reusing a keep-alive connection across requests, and a *previous* request's `Set-Cookie` was changing the auth state for the *next* request.
+
+The fix:
+
+```python
+connector = aiohttp.TCPConnector(
+    limit_per_host=20,
+    enable_cleanup_closed=True,
+    force_close=False,        # keep keep-alive
+)
+session = aiohttp.ClientSession(
+    connector=connector,
+    cookie_jar=aiohttp.DummyCookieJar(),  # ← this was the fix
+)
+```
+
+`DummyCookieJar` makes aiohttp drop all cookies between requests. For a *scanner* that's exactly what we want. For a *browser-like client* it would be wrong.
+
+### Bug 2 — the GIL never sleeps
+
+I tried to be clever and parallelise the response-similarity computation with `concurrent.futures.ThreadPoolExecutor`. Performance got *worse*. Of course it did — the diff function is pure Python, there's no I/O, the GIL gives you nothing.
+
+I moved the diff to `multiprocessing.Pool` and the throughput tripled. Lesson: threads for I/O, processes for CPU, asyncio for everything network.
+
+### Bug 3 — Bing dorking limits
+
+The original Bing dork mode worked great for ~50 queries. Then I started getting empty result pages and no error. Bing was silently rate-limiting *and* serving an obfuscated CAPTCHA page that returned 200 OK.
+
+Two things saved this:
+
+1. **Detect the soft-fail.** If the result page contains zero hits *and* `len(html) < 5000`, treat it as throttled and back off exponentially.
+2. **Rotate egress.** Sqlhound now supports a `--proxies` flag and round-robins across them. (Use ethically — your own.)
+
+## Performance numbers
+
+On a single workstation (16-core Ryzen, 32GB, residential gigabit), against a shuffled corpus of 50,000 URLs collected via dorking:
+
+<Table data={{
+  headers: ["Phase", "Wall time", "Throughput"],
+  rows: [
+    ["Filter + dedup", "8s", "6,250 url/s"],
+    ["Probe (3 reqs/url)", "11m 40s", "215 url/s"],
+    ["Time-based confirm", "2m 18s", "≈80 url/s (only candidates)"],
+    ["Total", "14m 06s", ""],
+    ["Hits flagged", "47", ""],
+    ["Confirmed by sqlmap", "41 (87%)", ""],
+  ]
+}} />
+
+87% confirmation rate from a shortlist of 47 isn't bad for a 14-minute scan. Sqlmap on the same input would still be running tomorrow.
+
+## What's next
+
+Current focus: WebSocket SQLi probing, GraphQL parameter discovery, and a smarter "is this an SPA?" detector so we know when to fall back to a real headless browser. If you want to follow along the code is on [GitHub](https://github.com/Mikivirus0/sqlhound) — issues and PRs welcome.
+
+> **Disclaimer obvious-but-required:** Sqlhound only scans targets you're authorised to test. The default behavior of the CLI requires `--i-have-permission` because that's just professional hygiene.
+
+If exploit dev is more your thing, my [OSED shellcode notes](/blog/osed-shellcode-from-scratch) are probably the next post you want.

@@ -1,114 +1,158 @@
 ---
-title: "Top 10 Penetration Testing Mistakes (And How to Avoid Them)"
-publishedAt: "2025-06-10"
-summary: "Avoiding these common pitfalls can turn a good penetration tester into a great one. Learn the top 10 mistakes beginners make and how to stay clear of them."
-tags: "Penetration Testing, Cybersecurity, Career"
+title: "Top 10 Penetration Testing Mistakes (And How To Avoid Them)"
+publishedAt: "2025-10-18"
+summary: "Ten mistakes I've watched junior pentesters make on real engagements — what each one looks like, the operational damage it causes, and the specific fix that makes it stop happening."
+tags: "Penetration Testing, Career, Mistakes"
 ---
 
-Whether you're doing bug bounties, internal red teaming, or client-based assessments — **penetration testing is more than just running tools.** Mistakes can lead to missed vulnerabilities, broken systems, or even legal trouble.
+I've reviewed a lot of pentest reports — mine, my peers', interviewees', students'. Roughly the same ten mistakes show up. None of them are about not knowing enough exploits. All of them are about process.
 
-Here are the **top 10 mistakes** I've seen beginners (and even intermediates) make — and how to avoid them.
+If you fix these ten things, your reports get sharper, your time-on-target shrinks, and you stop creating bad work-products that haunt the customer's inbox three weeks later.
+
+<Diagram num="1" caption="Where each mistake costs the operator. Time wasted on the engagement, plotted against damage to the deliverable.">
+  <svg viewBox="0 0 720 320" width="100%" style={{ maxWidth: 720, color: "var(--ink)" }} xmlns="http://www.w3.org/2000/svg">
+    <g fontFamily="Newsreader, Georgia, serif" fontSize="11">
+      <line x1="60"  y1="280" x2="700" y2="280" stroke="currentColor" strokeWidth="1" />
+      <line x1="60"  y1="20"  x2="60"  y2="280" stroke="currentColor" strokeWidth="1" />
+      <text x="380" y="304" fill="#8A7E6C" textAnchor="middle" fontStyle="italic">→ time wasted</text>
+      <text x="40"  y="150" fill="#8A7E6C" textAnchor="middle" fontStyle="italic" transform="rotate(-90 40 150)">→ damage to deliverable</text>
+
+      <circle cx="120" cy="240" r="5" fill="currentColor" />
+      <text x="135" y="244" fill="currentColor">VIII — weak reporting</text>
+
+      <circle cx="240" cy="60"  r="5" fill="var(--accent)" />
+      <text x="255" y="64" fill="var(--accent)" fontWeight="600">III — out-of-scope</text>
+
+      <circle cx="180" cy="190" r="5" fill="var(--accent-2)" />
+      <text x="195" y="194" fill="currentColor">I — skipped recon</text>
+
+      <circle cx="320" cy="220" r="5" fill="var(--accent-2)" />
+      <text x="335" y="224" fill="currentColor">II — no notes</text>
+
+      <circle cx="380" cy="120" r="5" fill="var(--accent)" />
+      <text x="395" y="124" fill="var(--accent)" fontWeight="600">IV — over-exploitation</text>
+
+      <circle cx="500" cy="200" r="5" fill="currentColor" />
+      <text x="515" y="204" fill="currentColor">V — tool-only mindset</text>
+
+      <circle cx="450" cy="80"  r="5" fill="var(--accent)" />
+      <text x="465" y="84" fill="var(--accent)" fontWeight="600">VI — no cleanup</text>
+
+      <circle cx="560" cy="160" r="5" fill="var(--accent-2)" />
+      <text x="575" y="164" fill="currentColor">VII — unvalidated finds</text>
+
+      <circle cx="600" cy="240" r="5" fill="currentColor" />
+      <text x="615" y="244" fill="currentColor">IX — same playbook</text>
+
+      <circle cx="660" cy="100" r="5" fill="currentColor" />
+      <text x="615" y="104" fill="currentColor" textAnchor="end">X — no reflection</text>
+    </g>
+  </svg>
+</Diagram>
+
+The red dots are the ones that get a junior **fired**. The amber ones cost the engagement. The green ones cost only the tester's growth.
 
 ## 1. Skipping Reconnaissance
-Jumping into scanning before proper recon is like trying to break into a house blindfolded. OSINT can reveal subdomains, public breaches, tech stacks, and more.
-> 🔍 **Fix:** Use tools like `theHarvester`, `Amass`, and `Shodan` to map your target before touching a scanner.
 
-## 2. No Note-Taking
-You’ll forget 90% of what you did if you don’t document it. Whether you're writing a report or backtracking an attack chain — notes are your best friend.
-> 🛠 **Fix:** Use `CherryTree`, `Obsidian`, or even markdown files with screenshots.
+Every dollar you skip on recon you pay back ten in exploitation. Recon turns a "scan and pray" engagement into a "I know exactly which endpoint is interesting" engagement.
 
-## 3. Ignoring Scope and Rules of Engagement
-Testing outside of scope can get you banned, blacklisted, or worse — legally liable.
-> 📋 **Fix:** Always read the scope. If in doubt, ask the client or check the bug bounty policy.
+> **Fix:** spend at least 10% of total engagement hours on phase 1 OSINT. For a 5-day test that's 4 hours. Build a stack-fingerprint, subdomain list, user-format guess, and breach-cred list before you touch a single packet at the target.
+
+## 2. Not Taking Notes
+
+You'll forget 80% of what you tried in 48 hours. Then the customer asks "did you check X?" and you don't know.
+
+> **Fix:** Obsidian + a per-engagement vault. One markdown file per host, one per finding. Screenshots paste straight into Obsidian on Windows and macOS — use it.
+
+```text
+~/engagements/acme-2025-q4/
+├── 00-scope.md            ← the SoW, copy-pasted, marked up
+├── 01-recon/
+├── 02-targets/10.20.0.50.md
+├── 02-targets/10.20.0.51.md
+├── 03-findings/
+│   ├── F-001-rce-jenkins.md
+│   └── F-002-broken-access.md
+└── 99-report.md           ← assembled at the end
+```
+
+## 3. Ignoring Scope
+
+Out-of-scope testing is the single fastest way to end your career. There is no "but I found something cool" exception.
+
+> **Fix:** print the scope. Tape it to your monitor. Use Burp's *Target → Scope* feature so the proxy refuses to send out-of-scope traffic by accident. If you find something interesting on an out-of-scope domain, *write it down and ask*. Don't poke.
 
 ## 4. Over-Exploitation
-Exploiting without caution can crash services and alert blue teams.
-> ⚠️ **Fix:** Confirm the impact with minimal proof-of-concept payloads. Never blindly use Metasploit modules.
 
-## 5. Relying Only on Tools
-No tool can replace critical thinking. Automated scanners miss logic bugs, chained vulnerabilities, and misconfigurations.
-> 🧠 **Fix:** Understand what each tool does. Pair automation with manual validation.
+Crashing a service to prove RCE works is the move of someone who's never had to apologise to a CIO. You don't need to drop a binary to prove command execution; you need to prove **command execution**, full stop.
+
+> **Fix:** the *minimum* PoC is the right PoC. `id`, `whoami`, or a unique DNS callback is plenty. Save the destructive PoCs for your home lab.
+
+## 5. Tools-Only Mindset
+
+A scanner is a junior who has read the manual but never thought about anything. Useful, fast, missing context.
+
+> **Fix:** before each scan, ask *"what would I do if this tool didn't exist?"* If your answer is "I have no idea", you're not ready for the scan. Read the protocol. Then run the tool.
 
 ## 6. Forgetting Cleanup
-Leaving shells, test accounts, or payloads is unprofessional and risky.
-> 🧽 **Fix:** Track every change you make. Clean up everything or report what couldn’t be reverted.
+
+You added a user. You uploaded a webshell. You created a scheduled task for persistence testing. **What happens to those at end-of-engagement?**
+
+> **Fix:** every artifact you drop on a target gets a row in a tracking table. End-of-engagement, you walk that table and remove every row. The customer's report includes a *cleanup attestation* signed by you.
+
+<Table data={{
+  headers: ["Artifact", "Host", "Path", "Removed?"],
+  rows: [
+    ["webshell.aspx", "WEB-PROD-01", "C:\\inetpub\\wwwroot\\img\\", "✅ 2025-11-14"],
+    ["domain user 'pt-svc'", "DC01", "AD: corp.local", "✅ 2025-11-14"],
+    ["scheduled task 'pt-test'", "FILE-01", "Task Scheduler", "✅ 2025-11-14"],
+  ]
+}} />
 
 ## 7. Not Validating Findings
-False positives make your report unreliable.
-> ✅ **Fix:** Manually validate every finding. Explain reproduction steps clearly.
+
+Auto-scanners produce noise. If your report says *"the host is vulnerable to MS17-010"* and the customer's IR team patched it 3 years ago, you've burned credibility. Validate.
+
+> **Fix:** every reported finding has a manually-reproduced screenshot. No exceptions. If you couldn't reproduce by hand, downgrade or drop the finding.
 
 ## 8. Weak Reporting
-A great pentest is useless without a strong report. If your report lacks clarity, impact, or remediation advice — it’s just noise.
-> 📑 **Fix:** Use clear formatting, include impact, screenshots, reproduction steps, and actionable fixes.
 
-## 9. Repeating Attack Paths
-If your only trick is SQL injection or password spraying, you’re limiting your growth.
-> 🔄 **Fix:** Continuously learn. Explore cloud attacks, AD abuse, SSRF chaining, etc.
+A great test with a weak report becomes invisible. Customers re-read reports six months later, when the CISO asks why a budget line item exists.
+
+> **Fix:** every finding needs `Title / Severity / Affects / Repro / Impact / Remediation`. Every section is one paragraph or fewer. If you can't compress it that small, you don't understand the finding yet.
+
+## 9. Repeating the Same Playbook
+
+If you find SQLi in every report, two things are true: SQLi is everywhere, *and* you only know how to find SQLi.
+
+> **Fix:** at the end of every engagement, add **one new technique** to your repertoire. SSRF chains. Cache deception. JWT key confusion. Workflow attacks on CI/CD. Variety is what separates a 3rd-year tester from a 1st-year tester.
 
 ## 10. No Post-Engagement Reflection
-You finish the test and move on — without asking, “What did I learn?”
-> 🧠 **Fix:** Reflect on your approach, tool usage, and what went well vs what didn’t.
 
----
+You finished. You shipped the report. Now what?
 
-## 🧾 Summary Table of Mistakes & Fixes
+> **Fix:** 30-minute solo retro. Three columns: *what worked, what wasted time, what I want to learn next*. Save it. Re-read it before your next engagement. This single habit compounds harder than any tool, course, or cert.
+
+## Summary
 
 <Table
   data={{
-    headers: ["Mistake", "Why It’s a Problem"],
+    headers: ["Mistake", "Cost", "One-line fix"],
     rows: [
-      ["Skipping Recon", "Missed entry points and attack vectors."],
-      ["No Note-Taking", "Forgetting critical steps and findings."],
-      ["Ignoring Scope", "Risk of legal issues and disqualification."],
-      ["Over-Exploitation", "System crashes and unnecessary alerts."],
-      ["Tool Dependency", "Missing complex or logical vulnerabilities."],
-      ["Forgetting Cleanup", "Leaving behind evidence or backdoors."],
-      ["Not Validating Findings", "False positives and client mistrust."],
-      ["Weak Reporting", "Poor communication of value and risk."],
-      ["Repeating Attack Paths", "Stagnant skillset and missed opportunities."],
-      ["No Reflection", "Slower improvement and poor growth trajectory."],
+      ["Skipping recon", "Engagement", "Reserve 10% of hours for OSINT"],
+      ["No notes", "Engagement", "Obsidian + per-host markdown"],
+      ["Out-of-scope", "Career", "Print the scope, scope your proxy"],
+      ["Over-exploitation", "Career", "Min-PoC: `id` is enough"],
+      ["Tool-only", "Growth", "Read the protocol first"],
+      ["No cleanup", "Career", "Track every artifact you place"],
+      ["Unvalidated", "Reputation", "Manual repro for every finding"],
+      ["Weak reporting", "Reputation", "Repro/Impact/Remediation, always"],
+      ["Same playbook", "Growth", "One new technique per engagement"],
+      ["No reflection", "Growth", "30-min retro, re-read it"],
     ],
   }}
 />
 
-## 🛠️ Tools to Avoid These Mistakes
-Here’s a list of tools that can help you avoid the common pitfalls in penetration testing:
+Most of these I learned by failing one of them and watching a senior tester pull me aside. Pass it along.
 
-- **Reconnaissance:**
-    - theHarvester - Gather emails, subdomains, and more.
-    - Amass, hackerstarget - Perform in-depth subdomain enumeration.
-    - Shodan, Censys, FOFA - Discover exposed devices and services.
-
-- **Note-Taking:**
-    - CherryTree - Hierarchical note-taking with rich text.
-    - Obsidian - Markdown-based knowledge management.
-    - Joplin - Open-source note-taking with sync support.
-
-- **Scope Management:**
-    - Burp Suite - Define and enforce scope for web testing.
-    - OWASP ZAP - Scope configuration for automated scans.
-
-- **Exploitation:**
-    - Metasploit - Use with caution for controlled exploitation. (Contains POC's for Known CVES)
-    - Github, ExploitDB - Best friends for finding exploits.
-
-- **Validation:**
-    - Nmap - Validate open ports and services.
-    - Burp Suite - Manually verify web vulnerabilities.
-    - SQLmap - Confirm SQL injection findings.
-
-- **Reporting:**
-    - Dradis - Collaborative reporting framework.
-    - Faraday - Centralized reporting for pentest teams.
-
-- **Reflection:**
-    - Mind Maps - Visualize your approach and lessons learned.
-    - Pentest Playbooks - Document reusable workflows.
-
-By integrating these tools into your workflow, you can minimize mistakes and maximize the value of your penetration tests.
-
-## Conclusion
-Penetration testing is a skill that improves with experience, but avoiding these common mistakes can accelerate your growth. Remember, **the goal is to think like an attacker while acting like a professional**.
-
-## Final Thoughts
-Penetration testing is a journey of continuous learning. Each mistake is an opportunity to improve. By being aware of these common pitfalls and actively working to avoid them, you can elevate your skills and deliver more value to your clients or bug bounty programs. Tools that are mentioned here are just a starting point; the real power comes from understanding how to use them effectively and ethically.
+Want the methodology this list assumes? Read [How I Approach Real-World Pentests](/blog/how-i-approach). Want the offensive specifics for an internal engagement? [Active Directory Attack Paths](/blog/active-directory-attack-paths) is the next stop.

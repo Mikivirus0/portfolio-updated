@@ -1,96 +1,79 @@
 import React from "react";
 import type { Metadata } from "next";
 import { ImageGrid } from "app/components/image-grid";
+import { Folio, FolioMark } from "../components/folio";
+import { Standfirst, Ornament } from "../components/ornament";
 
 export const metadata: Metadata = {
-  title: "Photos",
-  description: "My Photos",
+  title: "Plates",
+  description: "Photographic plates: CTFs, conferences, and travel.",
 };
 
 export default function Photos() {
   return (
-    <section>
-      <h1 className="mb-8 text-2xl font-medium">Photo Dump</h1>
-      <p className="prose prose-neutral dark:prose-invert mb-6">
-        A curated collection of my favorite photos from various events,
-        competitions, and memorable places where we’ve achieved remarkable wins
-        and milestones.
-      </p>
+    <article>
+      <Folio file="42" subject="Plates — photographic" />
 
-      {/* Optional: Full-width cover image grid */}
-      <ImageGrid
-        coverImage={{
-          src: "/photos/photo6.jpg",
-          alt: "Winning at Hackmasters 2024",
-        }}
-        columns={3}
-        images={[
-          { src: "/photos/photo5.jpg", alt: "Event 1" },
-          { src: "/photos/photo5.jpg", alt: "Event 2" },
-          { src: "/photos/photo5.jpg", alt: "Event 3" },
-        ]}
-      />
+      <div className="mb-2 flex items-baseline justify-between gap-4">
+        <span className="label-accent">Plates</span>
+        <span className="label">A photographic appendix</span>
+      </div>
 
-      {/* Grid with links and captions */}
-      <ImageGrid
-        columns={3}
-        images={[
-          {
-            src: "/photos/photo1.jpg",
-            alt: "Roman columns",
-            href: "https://unsplash.com/photos/people-walking-near-building-during-daytime-dFLBDQQeffU",
-          },
-          {
-            src: "/photos/photo2.jpg",
-            alt: "Big Ben",
-            href: "https://unsplash.com/photos/big-ben-london-MdJq0zFUwrw",
-          },
-          {
-            src: "/photos/photo3.jpg",
-            alt: "Sacré-Cœur Basilica",
-            href: "https://unsplash.com/photos/a-view-of-the-inside-of-a-building-through-a-circular-window-Tp-3hrx88J4",
-          },
-          {
-            src: "/photos/photo4.jpg",
-            alt: "Eiffel Tower",
-            href: "https://unsplash.com/photos/the-eiffel-tower-towering-over-the-city-of-paris-OgPuPvPsHLM",
-          },
-          {
-            src: "/photos/photo5.jpg",
-            alt: "Taj Mahal",
-            href: "https://unsplash.com/photos/taj-mahal-india-IPlPkWPJ2fo",
-          },
-          {
+      <h1 className="display text-[2.4rem] sm:text-[3.4rem] leading-[1.05] font-semibold tracking-tight balance text-[var(--ink)] fold fold-1">
+        A photographic{" "}
+        <span className="italic font-normal text-[var(--accent)]">
+          appendix.
+        </span>
+      </h1>
+
+      <Standfirst>
+        Frames from competitions won, conferences attended, and a handful of
+        cities the operator happened to be in when he was carrying a camera.
+      </Standfirst>
+
+      <Ornament />
+
+      <figure className="fig mb-12 fold fold-2">
+        <ImageGrid
+          coverImage={{
             src: "/photos/photo6.jpg",
-            alt: "Colosseum",
-            href: "https://unsplash.com/photos/brown-concrete-building-under-blue-sky-during-daytime-3cyBR1rIJmA",
-          },
-        ]}
-      />
+            alt: "Hackmasters'24 — winners' podium, Istanbul",
+          }}
+          columns={3}
+          images={[
+            { src: "/photos/photo5.jpg", alt: "Plate II — at the venue" },
+            { src: "/photos/photo4.jpg", alt: "Plate III — competition floor" },
+            { src: "/photos/photo3.jpg", alt: "Plate IV — between rounds" },
+          ]}
+        />
+        <figcaption className="mt-3">
+          <span className="fig-num">Plate I.</span>
+          The winner's photograph. Hackmasters'24, Istanbul, MMXXIV.
+        </figcaption>
+      </figure>
 
-      {/* 2-column layout */}
-      <ImageGrid
-        columns={2}
-        images={[
-          { src: "/photos/photo1.jpg", alt: "Roman columns" },
-          { src: "/photos/photo2.jpg", alt: "Big Ben" },
-          { src: "/photos/photo3.jpg", alt: "Sacré-Cœur Basilica" },
-          { src: "/photos/photo4.jpg", alt: "Eiffel Tower" },
-        ]}
-      />
+      <Ornament mark="※" />
 
-      {/* 4-column layout */}
-      <ImageGrid
-        columns={4}
-        images={[
-          { src: "/photos/photo1.jpg", alt: "Roman columns" },
-          { src: "/photos/photo2.jpg", alt: "Big Ben" },
-          { src: "/photos/photo3.jpg", alt: "Sacré-Cœur Basilica" },
-          { src: "/photos/photo4.jpg", alt: "Eiffel Tower" },
-          { src: "/photos/photo5.jpg", alt: "Taj Mahal" },
-          { src: "/photos/photo6.jpg", alt: "Colosseum" },
-        ]}
-      />
-    </section>
+      <figure className="fig fold fold-3">
+        <ImageGrid
+          columns={3}
+          images={[
+            { src: "/photos/photo1.jpg", alt: "Plate V" },
+            { src: "/photos/photo2.jpg", alt: "Plate VI" },
+            { src: "/photos/photo3.jpg", alt: "Plate VII" },
+            { src: "/photos/photo4.jpg", alt: "Plate VIII" },
+            { src: "/photos/photo5.jpg", alt: "Plate IX" },
+            { src: "/photos/photo6.jpg", alt: "Plate X" },
+          ]}
+        />
+        <figcaption className="mt-3">
+          <span className="fig-num">Plates II – X.</span>
+          A miscellany of travel and event photography, in no particular
+          order.
+        </figcaption>
+      </figure>
+
+      <FolioMark num="42" total="48" />
+    </article>
   );
 }

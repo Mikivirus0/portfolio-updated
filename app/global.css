@@ -2,150 +2,528 @@
 @tailwind components;
 @tailwind utilities;
 
-::selection {
-  background-color: #47a3f3;
-  color: #fefefe;
-}
+/* ─────────────────────────────────────────────────────────────
+   THE DOSSIER — editorial / archival publication aesthetic
+   • cream parchment + deep ink
+   • Newsreader (body) · Fraunces (display) · Inter (labels)
+   • marginalia gutter, folios, ornaments, drop caps
+   ───────────────────────────────────────────────────────────── */
+@import url("https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
-/* Light theme colors */
+/* ─────────────────────────────────────────────────────────────
+   PALETTE
+   light  → parchment paper
+   dark   → bound-leather library
+   ───────────────────────────────────────────────────────────── */
 :root {
-  --sh-class: #2d5e9d;
-  --sh-identifier: #354150;
-  --sh-sign: #8996a3;
-  --sh-string: #007f7a;
-  --sh-keyword: #e02518;
-  --sh-comment: #a19595;
-  --sh-jsxliterals: #6266d1;
-  --sh-property: #e25a1c;
-  --sh-entity: #e25a1c;
+  --paper:        #F2EDE3;
+  --paper-soft:   #E9E2D3;
+  --paper-deep:   #DCD3BE;
+  --ink:          #14110F;
+  --ink-soft:     #5C5246;
+  --ink-faint:    #8A7E6C;
+  --rule:         #B8A98F;
+  --rule-soft:    #D6C9AE;
+  --accent:       #8C2A1F;     /* oxblood / library red */
+  --accent-soft:  #C66B5C;
+  --accent-2:     #2E4756;     /* ink blue */
+  --highlight:    #E8C547;     /* archival amber for marginalia */
+
+  --serif:    "Newsreader", "Source Serif 4", Georgia, serif;
+  --display:  "Fraunces", "GT Sectra", "Newsreader", Georgia, serif;
+  --sans:     "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --mono:     "JetBrains Mono", "IBM Plex Mono", ui-monospace, Menlo, monospace;
+
+  --sh-class: #2E4756;
+  --sh-identifier: #14110F;
+  --sh-sign: #8A7E6C;
+  --sh-string: #6B4A1F;
+  --sh-keyword: #8C2A1F;
+  --sh-comment: #B8A98F;
+  --sh-jsxliterals: #2E4756;
+  --sh-property: #6B4A1F;
+  --sh-entity: #6B4A1F;
 }
 
-/* Dark theme colors */
 .dark {
-  background-color: #111010;
-  --sh-class: #4c97f8;
-  --sh-identifier: white;
-  --sh-sign: #8996a3;
-  --sh-string: #0fa295;
-  --sh-keyword: #f47067;
-  --sh-comment: #a19595;
-  --sh-jsxliterals: #6266d1;
-  --sh-property: #e25a1c;
-  --sh-entity: #e25a1c;
+  --paper:        #14110F;
+  --paper-soft:   #1C1714;
+  --paper-deep:   #221C18;
+  --ink:          #ECE3D2;
+  --ink-soft:     #B8A98F;
+  --ink-faint:    #7A6E5A;
+  --rule:         #3D352B;
+  --rule-soft:    #2A241D;
+  --accent:       #D67A6A;
+  --accent-soft:  #E8A595;
+  --accent-2:     #8DA3AF;
+  --highlight:    #E8C547;
+
+  --sh-class: #8DA3AF;
+  --sh-identifier: #ECE3D2;
+  --sh-sign: #7A6E5A;
+  --sh-string: #E8C547;
+  --sh-keyword: #D67A6A;
+  --sh-comment: #7A6E5A;
+  --sh-jsxliterals: #8DA3AF;
+  --sh-property: #E8C547;
+  --sh-entity: #E8C547;
+}
+
+::selection {
+  background-color: var(--ink);
+  color: var(--paper);
 }
 
 html {
   min-width: 360px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-feature-settings: "kern" 1, "liga" 1, "onum" 1, "pnum" 1;
+  font-variant-numeric: oldstyle-nums proportional-nums;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-.prose {
-  @apply text-[#000000] dark:text-[#FFFFFF];
+body {
+  background: var(--paper);
+  color: var(--ink);
+  position: relative;
+  /* Subtle paper grain — fully procedural, no asset needed */
+  background-image:
+    radial-gradient(rgba(20, 17, 15, 0.025) 1px, transparent 1px),
+    radial-gradient(rgba(20, 17, 15, 0.018) 1px, transparent 1px);
+  background-position: 0 0, 8px 8px;
+  background-size: 16px 16px;
 }
+.dark body {
+  background-image:
+    radial-gradient(rgba(236, 227, 210, 0.022) 1px, transparent 1px),
+    radial-gradient(rgba(236, 227, 210, 0.014) 1px, transparent 1px);
+  background-position: 0 0, 8px 8px;
+  background-size: 16px 16px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   TYPOGRAPHY PRIMITIVES
+   ───────────────────────────────────────────────────────────── */
+
+.display {
+  font-family: var(--display);
+  font-optical-sizing: auto;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variation-settings: "SOFT" 30, "WONK" 0;
+}
+
+.label {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.label-accent {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.standfirst {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.25rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  letter-spacing: -0.005em;
+}
+
+.smcaps {
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.08em;
+}
+
+.numerals-tab {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Drop cap for first paragraph of long-form entries */
+.dropcap > p:first-of-type::first-letter {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 4.5rem;
+  line-height: 0.85;
+  float: left;
+  margin: 0.18rem 0.6rem -0.1rem 0;
+  color: var(--accent);
+  font-feature-settings: "ss01" 1;
+}
+
+/* Pull quote */
+.pullquote {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.55rem;
+  line-height: 1.35;
+  color: var(--ink);
+  border: none;
+  margin: 2.5rem 0;
+  padding-left: 1.25rem;
+  border-left: 2px solid var(--accent);
+  letter-spacing: -0.01em;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ORNAMENTS — typographic dividers
+   ───────────────────────────────────────────────────────────── */
+.ornament {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  margin: 3rem 0;
+  color: var(--rule);
+  font-family: var(--display);
+  font-size: 1.1rem;
+}
+.ornament::before,
+.ornament::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--rule) 30%, var(--rule) 70%, transparent);
+  max-width: 140px;
+}
+.ornament-mark {
+  letter-spacing: 0.4em;
+  color: var(--accent);
+  font-style: italic;
+}
+
+/* hairline rule */
+.rule { height: 1px; background: var(--rule); margin: 1.5rem 0; }
+.rule-double {
+  height: 4px;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  margin: 1.5rem 0;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PROSE — long-form article styling
+   ───────────────────────────────────────────────────────────── */
+.prose {
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 1.0625rem;     /* 17px */
+  line-height: 1.72;
+  letter-spacing: -0.003em;
+}
+.prose p { margin: 1rem 0; }
 
 .prose .anchor {
-  @apply absolute invisible no-underline;
+  position: absolute;
+  visibility: hidden;
+  text-decoration: none;
   margin-left: -1em;
   padding-right: 0.5em;
   width: 80%;
   max-width: 700px;
   cursor: pointer;
 }
-
-.anchor:hover {
-  @apply visible;
-}
+.anchor:hover { visibility: visible; }
+.prose *:hover > .anchor { visibility: visible; }
+.prose .anchor::after { content: "§"; color: var(--accent); font-style: italic; }
 
 .prose a {
-  @apply transition-all decoration-neutral-400 dark:decoration-neutral-600 underline-offset-2 decoration-[0.1em] font-normal text-[#000000] dark:text-[#FFFFFF];
+  color: var(--ink);
+  text-decoration: none;
+  background-image: linear-gradient(to right, var(--accent), var(--accent));
+  background-size: 100% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: all 0.2s ease;
 }
-
 .prose a:hover {
-  @apply dark:decoration-neutral-400 decoration-neutral-600;
-}
-
-.prose .anchor:after {
-  @apply text-neutral-300 dark:text-neutral-700;
-  content: "#";
-}
-
-.prose *:hover > .anchor {
-  @apply visible;
+  color: var(--accent);
+  background-size: 100% 2px;
 }
 
 .prose pre {
-  @apply bg-[#F7F7F7] dark:bg-[#181818] rounded-lg overflow-x-auto;
+  background: var(--paper-soft) !important;
+  border-left: 2px solid var(--accent);
+  border-radius: 0;
+  padding: 1rem 1.1rem !important;
+  overflow-x: auto;
+  margin: 1.6rem 0;
+  font-family: var(--mono);
 }
-
 .prose code {
-  @apply px-1 py-0.5 rounded-lg;
+  background: var(--paper-soft);
+  color: var(--accent);
+  padding: 1px 5px;
+  font-size: 0.85em;
+  font-family: var(--mono);
+  border: 1px solid var(--rule-soft);
 }
-
 .prose pre code {
-  @apply p-0;
-  border: initial;
-  line-height: 1.5;
+  background: transparent;
+  color: var(--ink);
+  padding: 0;
+  font-size: 0.84rem;
+  line-height: 1.65;
+  border: none;
 }
-
-.prose code span {
-  @apply font-medium;
-}
+.prose code span { font-weight: 500; }
 
 .prose img {
-  /* Don't apply styles to next/image */
-  @apply m-0;
+  margin: 2rem auto;
+  display: block;
+  max-width: 100%;
+  border: 1px solid var(--rule);
+  padding: 6px;
+  background: var(--paper-soft);
 }
 
-.prose h2,
-h3,
-h4,
-h5,
-h6 {
-  @apply font-medium !important;
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin-top: 2.6rem;
+  margin-bottom: 0.75rem;
+  color: var(--ink);
+  line-height: 1.25;
+}
+.prose h2 {
+  font-size: 1.7rem;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0.4rem;
+}
+.prose h2::before {
+  content: counter(h2-counter, decimal) "  ";
+  counter-increment: h2-counter;
+  color: var(--accent);
+  font-weight: 400;
+  font-style: italic;
+  margin-right: 0.25em;
+}
+.prose { counter-reset: h2-counter; }
+.prose h3 {
+  font-size: 1.25rem;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--ink-soft);
 }
 
-.prose strong {
-  @apply font-medium;
+.prose strong { font-weight: 600; color: var(--ink); }
+.prose em { font-style: italic; }
+
+.prose blockquote {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.15rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  border-left: 2px solid var(--accent);
+  padding-left: 1.25rem;
+  margin: 1.6rem 0;
+  background: transparent;
 }
 
 .prose > :first-child {
-  /* Override removing top margin, causing layout shift */
-  margin-top: 1.25em !important;
-  margin-bottom: 1.25em !important;
+  margin-top: 0 !important;
 }
 
-pre::-webkit-scrollbar {
-  display: none;
+.prose .tweet a { text-decoration: inherit; font-weight: 500; }
+.prose .callout > p { margin: 0 !important; }
+
+table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+  border-collapse: collapse;
+  margin: 2rem 0;
+  font-size: 0.95em;
+}
+.prose th, .prose td {
+  border-bottom: 1px solid var(--rule-soft);
+  padding: 0.55rem 1rem 0.55rem 0;
+  text-align: left;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+.prose th {
+  border-bottom: 2px solid var(--ink);
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink);
+  padding-bottom: 0.5rem;
 }
 
+.prose ul, .prose ol { padding-left: 1.4rem; margin: 1rem 0; }
+.prose ul { list-style: none; }
+.prose ul li { position: relative; padding-left: 0.4rem; }
+.prose ul li::before {
+  content: "—";
+  position: absolute;
+  left: -1.1rem;
+  color: var(--accent);
+}
+.prose ol { list-style: none; counter-reset: li-counter; }
+.prose ol li {
+  counter-increment: li-counter;
+  position: relative;
+  padding-left: 0.2rem;
+}
+.prose ol li::before {
+  content: counter(li-counter) ".";
+  position: absolute;
+  left: -1.4rem;
+  color: var(--accent);
+  font-style: italic;
+  font-family: var(--display);
+  font-weight: 500;
+}
+
+/* hide pre scrollbars */
+pre::-webkit-scrollbar { display: none; }
 pre {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* Remove Safari input shadow on mobile */
-input[type="text"],
-input[type="email"] {
+input[type="text"], input[type="email"] {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
 }
 
-.prose .tweet a {
-  text-decoration: inherit;
+.title { text-wrap: balance; }
+.balance { text-wrap: balance; }
+.pretty { text-wrap: pretty; }
+
+/* ─────────────────────────────────────────────────────────────
+   Marginalia gutter (desktop)
+   ───────────────────────────────────────────────────────────── */
+.marginalia {
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  border-top: 1px solid var(--rule-soft);
+  padding-top: 0.4rem;
+  margin-top: 0.8rem;
+}
+.marginalia-num {
+  color: var(--accent);
+  font-style: italic;
+  font-family: var(--display);
+  margin-right: 0.3em;
+}
+
+/* Editorial figure */
+figure.fig {
+  margin: 2.5rem 0;
+}
+figure.fig img,
+figure.fig svg {
+  border: 1px solid var(--rule);
+  background: var(--paper-soft);
+  padding: 14px;
+  display: block;
+  max-width: 100%;
+  margin: 0 auto;
+}
+figure.fig figcaption {
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  margin-top: 0.7rem;
+  letter-spacing: 0.01em;
+  line-height: 1.55;
+  text-align: left;
+}
+figure.fig .fig-num {
+  font-family: var(--display);
+  font-style: italic;
+  color: var(--accent);
+  margin-right: 0.4em;
   font-weight: 500;
 }
 
-table {
-  display: block;
-  max-width: fit-content;
-  overflow-x: auto;
-  white-space: nowrap;
+/* index / catalogue rows */
+.index-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 1.2rem;
+  align-items: baseline;
+  padding: 0.9rem 0;
+  border-bottom: 1px dotted var(--rule);
+}
+.index-row:last-child { border-bottom: none; }
+.index-num {
+  font-family: var(--display);
+  font-style: italic;
+  color: var(--accent);
+  font-size: 1.05rem;
+}
+.index-leader {
+  border-bottom: 1px dotted var(--rule);
+  flex: 1;
 }
 
-.prose .callout > p {
-  margin: 0 !important;
+/* fade-in */
+@keyframes fold {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
+.fold { animation: fold 0.55s cubic-bezier(0.2, 0.6, 0.2, 1) both; }
+.fold-1 { animation-delay: 0.05s; }
+.fold-2 { animation-delay: 0.16s; }
+.fold-3 { animation-delay: 0.28s; }
+.fold-4 { animation-delay: 0.40s; }
+.fold-5 { animation-delay: 0.52s; }
 
-.title {
-  text-wrap: balance;
+/* underline on dossier links */
+.dlink {
+  color: var(--ink);
+  text-decoration: none;
+  background-image: linear-gradient(var(--accent), var(--accent));
+  background-size: 0 1px;
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  transition: background-size 0.3s ease, color 0.2s ease;
+  padding-bottom: 1px;
+}
+.dlink:hover { color: var(--accent); background-size: 100% 1px; }
+.dlink-active { color: var(--accent); background-size: 100% 1px; }
+
+/* ASCII / pre block — keep monospace where it actually helps */
+.mono { font-family: var(--mono); font-size: 0.85rem; }
+
+/* Stamp — used sparingly for tags / TLP markers */
+.stamp {
+  font-family: var(--sans);
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  padding: 2px 8px;
+  display: inline-block;
+  font-weight: 600;
+  transform: rotate(-1.5deg);
+  background: var(--paper);
 }
