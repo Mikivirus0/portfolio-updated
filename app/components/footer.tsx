@@ -29,82 +29,47 @@ function SocialLink({
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="dlink inline-flex items-center gap-1.5 text-[var(--ink-soft)] hover:text-[var(--accent)]"
+      className="text-[var(--ink-soft)] hover:text-[var(--accent)] transition-colors"
     >
-      <Icon className="text-[15px]" />
-      <span className="hidden md:inline label">{label}</span>
+      <Icon className="text-[16px]" />
     </a>
   );
 }
 
 export default function Footer() {
   return (
-    <footer className="mt-24 border-t-2 border-[var(--ink)] pt-5">
-      {/* Colophon */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
-        <div>
-          <p className="label mb-2">Colophon</p>
-          <p className="text-[14px] leading-relaxed text-[var(--ink-soft)] pretty">
-            Set in <em>Newsreader</em> &amp; <em>Fraunces</em>. Composed in
-            Next.js. Bound in cream &amp; oxblood.
-          </p>
+    <footer className="mt-24 border-t border-[var(--rule)] pt-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="text-[13px] text-[var(--ink-soft)]">
+          © {YEAR} {metaData.name}. All rights reserved.
         </div>
-        <div>
-          <p className="label mb-2">Imprint</p>
-          <p className="text-[14px] leading-relaxed text-[var(--ink-soft)]">
-            <span className="text-[var(--ink)]">{metaData.name}</span> · Vol.
-            III · No. IV
-            <br />
-            Islamabad &amp; the Open Internet
-            <br />© {YEAR}. Some rights reserved.
-          </p>
-        </div>
-        <div>
-          <p className="label mb-2">Correspondence</p>
-          <div className="flex items-center gap-4">
-            <SocialLink
-              href={socialLinks.github}
-              icon={FaGithub}
-              label="github"
-            />
-            <SocialLink
-              href={socialLinks.linkedin}
-              icon={FaLinkedinIn}
-              label="linkedin"
-            />
-            <SocialLink
-              href={socialLinks.twitter}
-              icon={FaXTwitter}
-              label="x"
-            />
-            <SocialLink
-              href={socialLinks.instagram}
-              icon={FaInstagram}
-              label="ig"
-            />
-            <SocialLink
-              href={socialLinks.email}
-              icon={TbMailFilled}
-              label="post"
-            />
-            <Link
-              href="/rss.xml"
-              aria-label="rss"
-              className="dlink text-[var(--ink-soft)] hover:text-[var(--accent)]"
-            >
-              <FaRss className="text-[15px]" />
-            </Link>
-          </div>
+        <div className="flex items-center gap-5 text-lg">
+          <SocialLink href={socialLinks.github} icon={FaGithub} label="GitHub" />
+          <SocialLink
+            href={socialLinks.linkedin}
+            icon={FaLinkedinIn}
+            label="LinkedIn"
+          />
+          <SocialLink href={socialLinks.twitter} icon={FaXTwitter} label="X" />
+          <SocialLink
+            href={socialLinks.instagram}
+            icon={FaInstagram}
+            label="Instagram"
+          />
+          <SocialLink
+            href={socialLinks.email}
+            icon={TbMailFilled}
+            label="Email"
+          />
+          <Link
+            href="/rss.xml"
+            aria-label="RSS"
+            className="text-[var(--ink-soft)] hover:text-[var(--accent)] transition-colors"
+          >
+            <FaRss className="text-[16px]" />
+          </Link>
         </div>
       </div>
-
-      {/* Bottom rule */}
-      <div className="rule-double" />
-      <p className="text-[11px] label flex items-center justify-between">
-        <span>fin.</span>
-        <span className="display italic text-[var(--accent)] text-base">❦</span>
-        <span className="numerals-tab">{YEAR} · {metaData.name}</span>
-      </p>
     </footer>
   );
 }

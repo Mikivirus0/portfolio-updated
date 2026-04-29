@@ -4,8 +4,6 @@ import Link from "next/link";
 import { CustomMDX } from "app/components/mdx";
 import { formatDate, getBlogPosts } from "app/lib/posts";
 import { metaData } from "app/config";
-import { Folio, FolioMark } from "app/components/folio";
-import { Ornament } from "app/components/ornament";
 
 export async function generateStaticParams() {
   let posts = getBlogPosts();
@@ -43,11 +41,7 @@ export async function generateMetadata({
       type: "article",
       publishedTime,
       url: `${metaData.baseUrl}/blog/${post.slug}`,
-      images: [
-        {
-          url: ogImage,
-        },
-      ],
+      images: [{ url: ogImage }],
     },
     twitter: {
       card: "summary_large_image",
@@ -68,72 +62,57 @@ export default async function Blog({ params }) {
 
   return (
     <article>
-      <Folio file="14" subject={`Essay — ${post.metadata.title}`} />
-
       <Link
         href="/blog"
         className="dlink label inline-block mb-4 text-[var(--ink-soft)]"
       >
-        ← Return to contents
+        ← Back to blog
       </Link>
 
       {/* Article header */}
-      <header className="mb-10">
+      <header className="mb-10 pb-6 border-b border-[var(--rule)]">
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-3">
-          <span className="label-accent">An essay</span>
-          <span className="label">·</span>
-          <span className="label numerals-tab">
+          <span className="label numerals-tab text-[var(--ink-soft)]">
             {formatDate(post.metadata.publishedAt)}
           </span>
           {post.metadata.tags && (
             <>
-              <span className="label">·</span>
+              <span className="text-[var(--ink-faint)]">·</span>
               <span className="label">{post.metadata.tags}</span>
             </>
           )}
         </div>
 
-        <h1 className="title display text-[2rem] sm:text-[3rem] leading-[1.06] font-semibold tracking-tight text-[var(--ink)] balance">
+        <h1 className="title display text-[2rem] sm:text-[2.8rem] leading-[1.08] font-semibold tracking-tight text-[var(--ink)] balance">
           {post.metadata.title}
         </h1>
 
         {post.metadata.summary && (
-          <p className="standfirst max-w-prose mt-5">
-            {post.metadata.summary}
-          </p>
+          <p className="standfirst max-w-prose mt-4">{post.metadata.summary}</p>
         )}
 
-        <p className="mt-6 text-[14px] label flex items-center gap-3">
-          <span>By</span>
-          <span className="display italic text-[var(--ink)] tracking-normal normal-case text-[15px]">
-            Umair Sabir
-          </span>
-          <span>·</span>
-          <span>The MikiVirus Dossier</span>
+        <p className="mt-5 text-[13px] text-[var(--ink-soft)]">
+          By Umair Sabir
         </p>
-
-        <div className="rule-double mt-6" />
       </header>
 
       <article className="prose prose-quoteless dropcap">
         <CustomMDX source={post.content} />
       </article>
 
-      <Ornament mark="❦" />
-
-      <p className="text-[14px] italic text-[var(--ink-soft)] text-center max-w-prose mx-auto">
-        ↦ If you'd like more like this,{" "}
-        <Link href="/blog" className="dlink">
-          return to the contents
-        </Link>{" "}
-        or subscribe to the{" "}
-        <a href="/rss.xml" className="dlink">
-          RSS feed
-        </a>
-        .
-      </p>
-
-      <FolioMark num="—" />
+      <div className="mt-16 pt-6 border-t border-[var(--rule)]">
+        <p className="text-[14px] text-[var(--ink-soft)] max-w-prose">
+          For more posts like this, visit the{" "}
+          <Link href="/blog" className="dlink">
+            blog
+          </Link>{" "}
+          or subscribe to the{" "}
+          <a href="/rss.xml" className="dlink">
+            RSS feed
+          </a>
+          .
+        </p>
+      </div>
     </article>
   );
 }

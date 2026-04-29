@@ -15,13 +15,11 @@ Most code golf is impractical. This is not. Tiny ELFs are useful in three real s
 
 We'll work in that third setting throughout. A small loader harness — `server.c`, sketched below — creates an anonymous file descriptor in RAM, writes our binary into it, and asks the kernel to execute the descriptor:
 
-<Terminal title="server.c — the harness">
-{`int fd = memfd_create("golf", 0);
+<Terminal title="server.c — the harness" code={`int fd = memfd_create("golf", 0);
 read(STDIN_FILENO, buffer, 79);          // hard cap: 79 bytes
 if (memcmp(buffer, "\\x7fELF", 4) != 0) { /* reject */ }
 write(fd, buffer, n);
-fexecve(fd, argv, envp);                 // execute from RAM`}
-</Terminal>
+fexecve(fd, argv, envp);                 // execute from RAM`} />
 
 Two things matter about this harness. First, the binary must be entirely self-contained: no dynamic linking, no \`/lib/ld-linux.so\`, no PT_INTERP — there is no room in 53 bytes for any of that. Second, the harness validates only the four magic bytes. Everything else is the kernel's problem.
 
@@ -69,13 +67,11 @@ If you read the System V ABI, you would believe the ELF format is sacred. If you
 
 **What it strictly checks.** The four magic bytes (`7F 45 4C 46`). The architecture (`e_machine == EM_386` on a 32-bit x86 system). The type (`e_type` must be `ET_EXEC` or `ET_DYN`). The PHT entry size (`e_phentsize` must equal `sizeof(struct elf_phdr)`, i.e. 32 on 32-bit). The PHT count (`e_phnum >= 1` and not absurdly large).
 
-<Terminal title="fs/binfmt_elf.c — the gates that matter">
-{`if (elf_ex->e_phentsize != sizeof(struct elf_phdr))
+<Terminal title="fs/binfmt_elf.c — the gates that matter" code={`if (elf_ex->e_phentsize != sizeof(struct elf_phdr))
     goto out;
 if (elf_ex->e_phnum < 1 ||
     elf_ex->e_phnum > 65536U / sizeof(struct elf_phdr))
-    goto out;`}
-</Terminal>
+    goto out;`} />
 
 **What it doesn't care about.** `e_ident[7..15]` — the padding bytes after EI_PAD. `e_shoff`, `e_flags`, `e_ehsize`, `e_shentsize`, `e_shnum`, `e_shstrndx`. Whether `e_phoff` points *after* the ELF header or *into* it. Whether the PHT and the header overlap. Whether the file has a section header table at all.
 
@@ -151,26 +147,22 @@ The payload has to invoke `execve("/bin/sh", NULL, NULL)`. On 32-bit Linux that'
 
 When a process starts, register values are *not* defined — they are whatever the kernel happened to leave behind, typically pointers and stack noise. We can't assume zero. Naïve initialisation costs too many bytes:
 
-<Terminal title="naïve, 11 bytes — too many">
-{`xor eax, eax        ; 31 c0    (2 bytes)
+<Terminal title="naïve, 11 bytes — too many" code={`xor eax, eax        ; 31 c0    (2 bytes)
 xor ecx, ecx        ; 31 c9    (2 bytes)
 xor edx, edx        ; 31 d2    (2 bytes)
 mov al, 11          ; b0 0b    (2 bytes)
 ; ebx still needs setting → 5 more bytes
-; total: 11 bytes`}
-</Terminal>
+; total: 11 bytes`} />
 
 There's a better way that uses the **side effects** of the unsigned-multiply instruction. `mul ecx` computes `EDX:EAX = EAX × ECX`. If `ECX` is zero, the result is zero — and it lands in *both* `EDX` and `EAX` simultaneously. So if we first zero `ECX` (two bytes), one `mul` instruction (two bytes) zeros all three of `eax`, `ecx`, and `edx`. Three zeroings for the price of four bytes — except we can do better still: a tail-placed `/bin/sh` string lets us skip the multiply trick entirely on this particular binary, because we have register noise we can spend.
 
 The 53-byte solution writes the code as:
 
-<Terminal title="payload at offset 32 — 9 bytes">
-{`mov al, 11          ; b0 0b           (2 bytes) — execve syscall number
+<Terminal title="payload at offset 32 — 9 bytes" code={`mov al, 11          ; b0 0b           (2 bytes) — execve syscall number
 mov ebx, 0x1002E    ; bb 2e 00 01 00  (5 bytes) — pointer to "/bin/sh"
 int 0x80            ; cd 80           (2 bytes) — trap into kernel
 ; one byte of padding to align e_phentsize at 0x2A
-; total: 9 bytes + 1 pad = 10 bytes — fits exactly`}
-</Terminal>
+; total: 9 bytes + 1 pad = 10 bytes — fits exactly`} />
 
 `ecx` and `edx` are *not* explicitly zeroed. On a freshly forked process via `fexecve`, they are usually clean from the kernel side; on noisier paths a `mul ecx`-style three-register zeroing would be safer at the cost of a few bytes. The 53-byte version is operating right at the edge.
 
@@ -192,8 +184,7 @@ The migration from 45 to 53 is, in effect, the cost of one decade of kernel sani
 
 Putting it all together, here is `tiny.asm` — not a compilable assembly program in the conventional sense, but a manually laid-out byte stream where every offset means at least two things:
 
-<Terminal title="tiny.asm — 53 bytes total">
-{`bits 32
+<Terminal title="tiny.asm — 53 bytes total" code={`bits 32
 org 0x00010000
 
   db 0x7F, "ELF"     ; e_ident[0..3]   — magic
@@ -218,8 +209,7 @@ _start:                ; offset 32 — code goes here
 bin_sh:                ; offset 46
   db "/bin/sh"
 
-filesize equ $ - $$    ; computed: 53`}
-</Terminal>
+filesize equ $ - $$    ; computed: 53`} />
 
 Note what's happening at every line: the bytes that decode as *the ELF identifier* `01 01 00 00` (32-bit, little-endian, version 1, padding) decode equally well as a *program-header `p_type` field* with the value `PT_LOAD = 1`. The bytes that say "this is an executable on x86" (`02 00 03 00`) also constitute a `p_paddr` field nobody is going to read. The 53 in `e_version` is also the segment size. **The metadata is the program header is the code is the string.** It is a single byte stream playing every role the kernel asks for.
 

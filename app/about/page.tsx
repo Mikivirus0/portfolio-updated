@@ -2,38 +2,30 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { socialLinks } from "../config";
-import { Folio, FolioMark } from "../components/folio";
-import { Ornament, Section, Standfirst } from "../components/ornament";
+import { Ornament } from "../components/ornament";
 
 export const metadata: Metadata = {
-  title: "Subject — Sabir, U.",
+  title: "About",
   description:
-    "About Umair Sabir (MikiVirus): MS Cybersecurity, OSCP, OSED in progress, founder of ByteBoltSec.",
+    "About Umair Sabir — Cyber Security Engineer specializing in penetration testing, Active Directory, VAPT, DFIR, and security automation.",
 };
 
 export default function About() {
   return (
     <article>
-      <Folio file="02" subject="Subject — Sabir, U." />
+      {/* ─── Header ─────────────────────────── */}
+      <section className="mb-10 fold fold-1">
+        <p className="label-accent mb-3">About</p>
+        <h1 className="display text-[2.4rem] sm:text-[3.2rem] leading-[1.05] font-semibold tracking-tight balance text-[var(--ink)]">
+          Umair Sabir
+        </h1>
+        <p className="display italic text-[1.15rem] sm:text-[1.25rem] text-[var(--ink-soft)] mt-2">
+          Cyber Security Engineer · Islamabad, Pakistan
+        </p>
+      </section>
 
-      {/* Title block */}
-      <div className="mb-2 flex items-baseline justify-between gap-4">
-        <span className="label-accent">On the subject</span>
-        <span className="label">Dossier opened MMXIX</span>
-      </div>
-      <h1 className="display text-[2.4rem] sm:text-[3.4rem] leading-[1.05] font-semibold tracking-tight balance text-[var(--ink)] fold fold-1">
-        Umair Sabir,{" "}
-        <span className="italic font-normal text-[var(--accent)]">
-          alias MikiVirus
-        </span>
-      </h1>
-      <Standfirst>
-        Pakistan-based offensive-security operator. Hire him to break things —
-        then to write the report that makes sure no one else can.
-      </Standfirst>
-
-      {/* Byline portrait + intro */}
-      <div className="grid grid-cols-[120px_1fr] sm:grid-cols-[160px_1fr] gap-6 mb-10 items-start fold fold-2">
+      {/* ─── Intro + photo ─────────────────────── */}
+      <section className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-6 mb-10 items-start fold fold-2">
         <a
           href={socialLinks.github}
           target="_blank"
@@ -42,196 +34,326 @@ export default function About() {
         >
           <Image
             src="/profile.png"
-            alt="Umair Sabir, photographed"
+            alt="Umair Sabir"
             width={160}
             height={160}
             unoptimized
             priority
             className="border border-[var(--rule)] p-1.5 bg-[var(--paper-soft)] grayscale hover:grayscale-0 transition-all duration-500"
           />
-          <p className="label text-center mt-2 text-[10.5px]">Plate I — operator, recent</p>
         </a>
-        <div className="text-[15.5px] leading-[1.75] text-[var(--ink)] pretty dropcap">
+        <div className="text-[15.5px] leading-[1.75] text-[var(--ink)] pretty">
           <p>
-            The subject of this file is{" "}
-            <strong>Umair Sabir</strong> — known online as{" "}
-            <span className="text-[var(--accent)]">MikiVirus</span>. He holds a{" "}
-            <em>Master's in Cybersecurity</em> from Air University and is, at
-            the time of writing, sitting the{" "}
-            <strong>Offensive Security Exploit Developer</strong>{" "}
-            certification — windows exploit development, custom shellcode,
-            SEH/IAT chains, the whole stack. He is already{" "}
-            <strong>OSCP</strong>, <strong>CRTO</strong>, and{" "}
-            <strong>eCPPT</strong> certified.
+            I'm a Cyber Security Engineer based in Islamabad, Pakistan. My
+            day-to-day work combines offensive security engagements,
+            development, and AI-driven automation — the kind of role where
+            you spend Monday breaking into a network, Tuesday writing the
+            tooling that finds the next one, and Wednesday automating the
+            workflow that ships the report.
+          </p>
+          <p className="mt-3">
+            I hold a Master's in Cyber Security from{" "}
+            <strong>Air University</strong>. I'm{" "}
+            <strong>OSCP</strong> certified, along with{" "}
+            <strong>CRTO</strong> and <strong>eCPPT</strong>. I'm currently
+            pursuing <strong>OSED</strong> — Windows exploit development —
+            because the topic genuinely interests me.
           </p>
         </div>
-      </div>
+      </section>
 
       <Ornament />
 
-      {/* Capabilities */}
-      <Section label="Capabilities" title="What I actually do">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-2">
+      {/* ─── What I do ─────────────────────── */}
+      <section className="mb-10">
+        <h2 className="display text-[1.6rem] sm:text-[1.85rem] font-semibold tracking-tight text-[var(--ink)] mb-5">
+          What I do
+        </h2>
+        <p className="text-[15.5px] leading-[1.75] text-[var(--ink-soft)] mb-6 pretty max-w-prose">
+          My work spans the full offensive-security lifecycle and increasingly
+          touches the development and automation side of security operations.
+          The areas I focus on most:
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-5">
           <Capability
-            k="VAPT"
-            v="External + internal pentests; web, API, Active Directory, AWS / Azure."
+            title="Penetration Testing"
+            body="External and internal engagements, Active Directory, web applications, APIs, and networks. Full-cycle VAPT with detailed reporting."
           />
           <Capability
-            k="Red Team"
-            v="Phishing, payload dev, AD abuse, lateral movement, persistence."
+            title="Active Directory Security"
+            body="Kerberoasting, ACL abuse, delegation attacks, BloodHound path analysis, and hardening reviews."
           />
           <Capability
-            k="Exploit Dev"
-            v="x86 / x64 stack overflows, SEH chains, ROP, custom shellcode."
+            title="Web · API · Network VAPT"
+            body="Manual testing supported by Burp Suite, Nuclei, custom scripts, and proper threat modeling."
           />
           <Capability
+            title="DFIR"
+            body="Memory forensics, malware triage (PDF, Office, JS), sandbox analysis, and incident response support."
+          />
+          <Capability
+            title="Security Tool Development"
+            body="Open-source offensive and defensive tooling — Sqlhound, SUBROOT, MalwareMaster — primarily in Python and C."
+          />
+          <Capability
+            title="AI Automation & Workflows"
+            body="Designing and deploying AI-driven workflows for security operations using OpenCLAW, n8n, and custom integrations."
+          />
+          <Capability
+            title="Reverse Engineering"
+            body="Static and dynamic binary analysis. Used in malware research and exploit development work."
+          />
+          <Capability
+            title="Exploit Development"
+            body="Currently focused on Windows exploit development as part of OSED preparation — shellcoding, SEH chains, ROP."
+          />
+        </div>
+      </section>
+
+      <Ornament />
+
+      {/* ─── Skills & tools ─────────────────────── */}
+      <section className="mb-10">
+        <h2 className="display text-[1.6rem] sm:text-[1.85rem] font-semibold tracking-tight text-[var(--ink)] mb-5">
+          Skills & tools
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-2 text-[14.5px] leading-relaxed">
+          <Skill
+            k="Languages"
+            v="Python · Bash · C · JavaScript · x86/x64 Assembly"
+          />
+          <Skill
+            k="Offensive"
+            v="Burp Suite · Nuclei · Impacket · BloodHound · CrackMapExec · Mimikatz"
+          />
+          <Skill
+            k="Reversing"
+            v="IDA · Ghidra · WinDbg · x64dbg · Radare2"
+          />
+          <Skill
             k="DFIR"
-            v="Memory forensics, malware triage (PDF / Office / JS), Cuckoo sandboxing."
+            v="Volatility · Cuckoo Sandbox · YARA · The Sleuth Kit"
           />
-          <Capability
-            k="Tooling"
-            v="If a tool annoys me I write a better one. The catalogue is at /projects."
+          <Skill
+            k="Automation"
+            v="OpenCLAW · n8n · GitHub Actions · custom AI workflows"
           />
-          <Capability
-            k="Speaking"
-            v="Trainings, podcast guest, CTF challenge design for AirOverflow."
+          <Skill
+            k="Cloud & infra"
+            v="AWS · Azure · Docker · Kubernetes (security context)"
           />
         </div>
-      </Section>
-
-      <Ornament mark="※" />
-
-      {/* Story */}
-      <Section label="Particulars" title="The story so far">
-        <div className="space-y-4 text-[15.5px] leading-[1.75] text-[var(--ink)] pretty max-w-prose">
-          <p>
-            I started where most of us start: 2 a.m., Hack The Box on the
-            second monitor, refusing to go to bed until the box was rooted.
-            The curiosity turned into CTFs; CTFs turned into competitive teams;
-            competitive teams turned into a career.
-          </p>
-          <p>
-            I co-founded <strong>ByteBoltSec</strong>, a small but sharp
-            Pakistan-based cybersecurity outfit, and I sit in the core of{" "}
-            <strong>AirOverflow</strong> — where I design CTF challenges and
-            stand up the lab infrastructure for national and international
-            competitions. Off-stage, I have trained students under{" "}
-            <strong>Ignite</strong> programmes at Bahria University on
-            practical penetration testing.
-          </p>
-          <p>
-            I write{" "}
-            <Link href="/blog" className="dlink">
-              long-form essays
-            </Link>{" "}
-            when I learn something worth sharing, ship{" "}
-            <Link href="/projects" className="dlink">
-              open-source tools
-            </Link>{" "}
-            when the existing ones frustrate me, and try in small ways to make
-            the Pakistan infosec community a little less gatekept than I found
-            it.
-          </p>
-        </div>
-      </Section>
-
-      <blockquote className="pullquote balance">
-        “Hacking isn't about breaking systems; it's about understanding them
-        better than the people who built them.”
-      </blockquote>
-
-      {/* Trophies as a proper editorial table */}
-      <Section label="Trophies" title="Selected distinctions">
-        <table className="w-full !block sm:!table border-collapse text-[14.5px]">
-          <thead>
-            <tr className="border-b-2 border-[var(--ink)]">
-              <th className="label text-left py-2 pr-4 w-20">Year</th>
-              <th className="label text-left py-2 pr-4">Engagement</th>
-              <th className="label text-left py-2">Result</th>
-            </tr>
-          </thead>
-          <tbody>
-            <Trophy y="MMXXIV" e="Hackmasters'24 — OIC CTF, Istanbul" r="Winner" gold />
-            <Trophy y="MMXXIV" e="BlackHat MEA '24 — Riyadh" r="Finalist" />
-            <Trophy y="MMXXIII" e="BlackHat MEA '23 — Riyadh" r="Finalist" />
-            <Trophy y="MMXXIII" e="MCS CTF '23 — Military College of Signals" r="Winner" gold />
-            <Trophy y="MMXXII" e="Pakistan Cyber Security Challenge (NCCS × AU)" r="Top 10" />
-            <Trophy y="MMXXII" e="NASCON '22 CTF — FAST-NUCES" r="4th place" />
-          </tbody>
-        </table>
-      </Section>
+      </section>
 
       <Ornament />
 
-      {/* Community */}
-      <Section label="Community" title="Speaking · workshops · writing">
-        <ul className="text-[15px] space-y-3 text-[var(--ink)] pretty">
+      {/* ─── Education & certifications ─────────────── */}
+      <section className="mb-10 grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-8">
+        <div>
+          <h2 className="display text-[1.4rem] font-semibold tracking-tight text-[var(--ink)] mb-4">
+            Education
+          </h2>
+          <ul className="text-[14.5px] leading-relaxed space-y-2.5 text-[var(--ink)]">
+            <li>
+              <span className="display italic text-[var(--accent)]">
+                MS, Cyber Security
+              </span>
+              <br />
+              <span className="text-[var(--ink-soft)]">Air University, Islamabad</span>
+            </li>
+            <li>
+              <span className="display italic text-[var(--accent)]">
+                BS, Cyber Security
+              </span>
+              <br />
+              <span className="text-[var(--ink-soft)]">Air University, Islamabad</span>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h2 className="display text-[1.4rem] font-semibold tracking-tight text-[var(--ink)] mb-4">
+            Certifications
+          </h2>
+          <ul className="text-[14.5px] leading-relaxed space-y-2 text-[var(--ink)]">
+            <li>
+              <strong>OSCP</strong> — Offensive Security Certified Professional
+            </li>
+            <li>
+              <strong>CRTO</strong> — Certified Red Team Operator
+            </li>
+            <li>
+              <strong>eCPPT</strong> — Certified Professional Penetration Tester
+            </li>
+            <li className="text-[var(--ink-soft)]">
+              <strong className="text-[var(--ink)]">OSED</strong> — in progress
+              (Windows exploit development)
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <Ornament />
+
+      {/* ─── Achievements ─────────────────────── */}
+      <section className="mb-10">
+        <h2 className="display text-[1.6rem] sm:text-[1.85rem] font-semibold tracking-tight text-[var(--ink)] mb-5">
+          Selected achievements
+        </h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-[14.5px] border-collapse">
+            <thead>
+              <tr className="border-b-2 border-[var(--ink)]">
+                <th className="label text-left py-2 pr-4 w-20">Year</th>
+                <th className="label text-left py-2 pr-4">Event</th>
+                <th className="label text-left py-2">Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              <Row y="2024" e="Hackmasters'24 — OIC CTF, Istanbul" r="Winner" highlight />
+              <Row y="2024" e="BlackHat MEA '24 — Riyadh" r="Finalist" />
+              <Row y="2023" e="BlackHat MEA '23 — Riyadh" r="Finalist" />
+              <Row y="2023" e="MCS CTF '23 — Military College of Signals" r="Winner" highlight />
+              <Row y="2022" e="Pakistan Cyber Security Challenge (NCCS × AU)" r="Top 10" />
+              <Row y="2022" e="NASCON '22 CTF — FAST-NUCES" r="4th place" />
+              <Row y="—" e="National hackathons & competitions" r="20+ wins" />
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <Ornament />
+
+      {/* ─── Roles & community ─────────────────────── */}
+      <section className="mb-10">
+        <h2 className="display text-[1.6rem] sm:text-[1.85rem] font-semibold tracking-tight text-[var(--ink)] mb-5">
+          Roles & community
+        </h2>
+        <ul className="text-[15px] leading-[1.7] space-y-3 text-[var(--ink)] max-w-prose">
           <li>
-            <span className="label-accent mr-2">Talks ·</span> Featured podcast
-            guest as Founder of ByteBoltSec, on the Pakistan offsec scene and
-            breaking into the field.
+            <strong>Founder, ByteBoltSec</strong> — a Pakistan-based
+            cybersecurity practice focused on practical penetration testing
+            and security training.
           </li>
           <li>
-            <span className="label-accent mr-2">Workshops ·</span> Practical
-            penetration-testing trainings under <em>Ignite</em> at Bahria
+            <strong>Core member, AirOverflow</strong> — designing CTF
+            challenges and lab infrastructure for national and international
+            cybersecurity events.
+          </li>
+          <li>
+            <strong>Trainer</strong> — practical penetration testing
+            workshops for students under the Ignite program at Bahria
             University.
           </li>
+        </ul>
+      </section>
+
+      <Ornament />
+
+      {/* ─── Currently ─────────────────────── */}
+      <section className="mb-10">
+        <h2 className="display text-[1.6rem] sm:text-[1.85rem] font-semibold tracking-tight text-[var(--ink)] mb-5">
+          Currently
+        </h2>
+        <ul className="text-[15px] leading-[1.7] space-y-2 text-[var(--ink-soft)] max-w-prose">
           <li>
-            <span className="label-accent mr-2">CTF ·</span> Designed
-            Jeopardy-style CTF challenges and lab infrastructure for AirOverflow
-            events.
+            Studying for <strong className="text-[var(--ink)]">OSED</strong> —
+            Windows exploit development, custom shellcode, SEH chains.
           </li>
           <li>
-            <span className="label-accent mr-2">Writing ·</span> Tutorials on
-            Cuckoo sandbox install, Nmap deep-dives, and offensive tooling on
-            LinkedIn and on this site.
+            Building AI-driven workflows for security operations using{" "}
+            <strong className="text-[var(--ink)]">OpenCLAW</strong> and{" "}
+            <strong className="text-[var(--ink)]">n8n</strong>.
+          </li>
+          <li>
+            Maintaining open-source security tools — see the{" "}
+            <Link href="/projects" className="dlink">
+              projects
+            </Link>{" "}
+            page.
+          </li>
+          <li>
+            Writing technical posts on offensive security, exploit development,
+            and tooling on the{" "}
+            <Link href="/blog" className="dlink">
+              blog
+            </Link>
+            .
           </li>
         </ul>
-      </Section>
+      </section>
 
-      <Ornament mark="❦" />
+      <Ornament />
 
-      {/* Correspondence */}
-      <Section label="Correspondence" title="How to reach the subject">
-        <ul className="text-[15px] leading-[1.85] text-[var(--ink)]">
-          <Channel name="LinkedIn" handle="linkedin.com/in/mikivirus" href={socialLinks.linkedin} />
-          <Channel name="GitHub" handle="github.com/Mikivirus0" href={socialLinks.github} />
-          <Channel name="X (formerly Twitter)" handle="@UmairSa76915114" href={socialLinks.twitter} />
-          <Channel name="Instagram" handle="@miki._.virus" href={socialLinks.instagram} />
-          <Channel name="By post" handle="mumairs3636@gmail.com" href={socialLinks.email} />
-        </ul>
-        <p className="text-[14px] italic text-[var(--ink-soft)] mt-4 max-w-prose">
-          He reads everything. He replies to most things. Cold emails for
-          legitimate work are welcome. Recruitment spam is not.
+      {/* ─── Contact ─────────────────────── */}
+      <section className="mb-6">
+        <h2 className="display text-[1.6rem] sm:text-[1.85rem] font-semibold tracking-tight text-[var(--ink)] mb-5">
+          Get in touch
+        </h2>
+        <p className="text-[15.5px] leading-[1.75] text-[var(--ink-soft)] max-w-prose mb-4">
+          For consulting, collaborations, training, or just to say hello — the
+          best ways to reach me:
         </p>
-      </Section>
-
-      <FolioMark num="6" total="48" />
+        <ul className="text-[15px] leading-[1.85]">
+          <Channel
+            name="Email"
+            handle="mumairs3636@gmail.com"
+            href={socialLinks.email}
+          />
+          <Channel
+            name="LinkedIn"
+            handle="linkedin.com/in/mikivirus"
+            href={socialLinks.linkedin}
+          />
+          <Channel
+            name="GitHub"
+            handle="github.com/Mikivirus0"
+            href={socialLinks.github}
+          />
+          <Channel
+            name="X"
+            handle="@UmairSa76915114"
+            href={socialLinks.twitter}
+          />
+        </ul>
+      </section>
     </article>
   );
 }
 
-function Capability({ k, v }: { k: string; v: string }) {
+function Capability({ title, body }: { title: string; body: string }) {
   return (
-    <div className="grid grid-cols-[110px_1fr] gap-3 items-baseline py-2 border-b border-dotted border-[var(--rule-soft)] last:border-b-0">
-      <dt className="label text-[var(--ink)]">{k}</dt>
-      <dd className="text-[14.5px] text-[var(--ink-soft)] leading-relaxed">
-        {v}
-      </dd>
+    <div>
+      <h3 className="display text-[1.05rem] font-semibold text-[var(--ink)] mb-1.5 leading-tight">
+        {title}
+      </h3>
+      <p className="text-[14px] text-[var(--ink-soft)] leading-[1.65] pretty">
+        {body}
+      </p>
     </div>
   );
 }
 
-function Trophy({
+function Skill({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="grid grid-cols-[110px_1fr] sm:grid-cols-[120px_1fr] gap-3 items-baseline py-1.5 border-b border-dotted border-[var(--rule-soft)] last:border-b-0">
+      <dt className="label text-[var(--ink-faint)]">{k}</dt>
+      <dd className="text-[var(--ink)]">{v}</dd>
+    </div>
+  );
+}
+
+function Row({
   y,
   e,
   r,
-  gold,
+  highlight,
 }: {
   y: string;
   e: string;
   r: string;
-  gold?: boolean;
+  highlight?: boolean;
 }) {
   return (
     <tr className="border-b border-dotted border-[var(--rule)]">
@@ -242,9 +364,9 @@ function Trophy({
       <td className="py-2.5">
         <span
           className={
-            gold
-              ? "stamp"
-              : "text-[var(--ink-soft)] italic display text-[14px]"
+            highlight
+              ? "text-[var(--accent)] font-semibold"
+              : "text-[var(--ink-soft)]"
           }
         >
           {r}
@@ -264,13 +386,13 @@ function Channel({
   href: string;
 }) {
   return (
-    <li className="grid grid-cols-[150px_1fr] sm:grid-cols-[180px_1fr] gap-3 items-baseline py-1.5 border-b border-dotted border-[var(--rule-soft)] last:border-b-0">
+    <li className="grid grid-cols-[100px_1fr] sm:grid-cols-[120px_1fr] gap-3 items-baseline py-1.5 border-b border-dotted border-[var(--rule-soft)] last:border-b-0">
       <span className="label">{name}</span>
       <a
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="dlink display italic text-[var(--ink)] text-[15.5px]"
+        className="dlink text-[var(--ink)] text-[15px]"
       >
         {handle}
       </a>

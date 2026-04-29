@@ -36,23 +36,40 @@ export function Diagram({
 
 /**
  * <Terminal> — code listing styled like an editorial sidebar block.
- * Cream paper, ink type, oxblood left rule.
+ * Pass code as the `code` prop (string). Children also accepted as a fallback.
+ *
+ * Recommended MDX usage:
+ *   <Terminal title="..." code={`...multiline string...`} />
+ *
+ * Using JSX children with a template-literal expression can be eaten by
+ * MDX 3's expression handling in some configurations; the `code` prop
+ * sidesteps that entirely.
  */
 export function Terminal({
   title = "listing",
+  code,
   children,
 }: {
   title?: string;
-  children: React.ReactNode;
+  code?: string;
+  children?: React.ReactNode;
 }) {
+  const body = code ?? children;
   return (
     <figure className="my-7 not-prose">
       <div className="border-l-2 border-[var(--accent)] bg-[var(--paper-soft)] border-y border-r border-[var(--rule-soft)]">
         <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--rule-soft)]">
           <span className="label text-[10.5px]">Listing — {title}</span>
         </div>
-        <pre className="px-4 py-3 text-[12.5px] leading-[1.65] text-[var(--ink)] overflow-x-auto font-mono">
-          {children}
+        <pre
+          className="px-4 py-3 text-[12.5px] leading-[1.65] text-[var(--ink)] overflow-x-auto"
+          style={{
+            fontFamily: "var(--mono)",
+            whiteSpace: "pre",
+            margin: 0,
+          }}
+        >
+          {body}
         </pre>
       </div>
     </figure>
