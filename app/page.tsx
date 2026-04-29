@@ -8,7 +8,9 @@ export default function Page() {
     <article>
       {/* ─── Hero ─────────────────────────────── */}
       <section className="fold fold-1 mb-10">
-        <p className="label-accent mb-3">Cyber Security Engineer</p>
+        <p className="label-accent mb-3">
+          Cyber Security Engineer · AirOverflow
+        </p>
         <h1
           className="display text-[2.4rem] sm:text-[3.6rem] leading-[1.05] font-semibold tracking-tight text-[var(--ink)] balance"
           style={{ fontVariationSettings: '"SOFT" 30, "WONK" 0' }}
@@ -17,11 +19,12 @@ export default function Page() {
           <span className="text-[var(--accent)]">Umair Sabir</span>.
         </h1>
         <p className="mt-5 text-[16px] sm:text-[17px] leading-[1.7] text-[var(--ink-soft)] max-w-prose pretty">
-          I help organizations find and fix security weaknesses before
-          attackers do. My focus is on offensive security — penetration
-          testing, Active Directory, web, API, and network VAPT — alongside
-          DFIR work, security tool development, and AI-driven automation
-          for security operations.
+          I'm a Cyber Security Engineer at <strong className="text-[var(--ink)]">AirOverflow</strong>,
+          where I run penetration testing engagements, build security tooling,
+          and develop CTF challenges and platforms. My focus areas are
+          offensive security — penetration testing, Active Directory, web,
+          API, and network VAPT — alongside DFIR, security tool development,
+          and AI-driven automation for security operations.
         </p>
       </section>
 
@@ -87,30 +90,64 @@ export default function Page() {
         <h2 className="display text-[1.6rem] sm:text-[2rem] font-semibold tracking-tight text-[var(--ink)] mb-6 balance">
           Areas of focus
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-5 text-[14.5px] leading-relaxed">
+
+        <p className="label-accent mb-4">Offensive security</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-5 text-[14.5px] leading-relaxed mb-8">
           <Focus
-            title="Penetration testing"
+            title="Penetration Testing"
             body="External and internal engagements, web applications, APIs, and networks. End-to-end VAPT with clear, actionable reporting."
           />
           <Focus
-            title="Active Directory security"
+            title="Red Team Operations"
+            body="Adversary emulation, phishing campaigns, payload development, and full-chain intrusion exercises aligned with the MITRE ATT&CK framework."
+          />
+          <Focus
+            title="Active Directory Security"
             body="Kerberos abuse, ACL chains, delegation attacks, BloodHound-driven path analysis, and AD hardening recommendations."
           />
           <Focus
+            title="Cloud Security"
+            body="Security assessments and configuration reviews across AWS and Azure — identity, networking, container, and Kubernetes attack surface."
+          />
+        </div>
+
+        <p className="label-accent mb-4">Analysis & research</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-5 text-[14.5px] leading-relaxed mb-8">
+          <Focus
             title="DFIR"
-            body="Memory forensics, malware triage, sandbox analysis, and incident response support across Windows and Linux environments."
+            body="Memory forensics, sandbox analysis, log review, and incident response support across Windows and Linux environments."
           />
           <Focus
-            title="Security tool development"
+            title="Malware Analysis"
+            body="Static and dynamic analysis of malicious binaries, scripts, and document-borne payloads. Indicator extraction and behavioural reporting."
+          />
+          <Focus
+            title="Reverse Engineering"
+            body="Binary analysis with IDA, Ghidra, WinDbg, and x64dbg. Used in vulnerability research, malware work, and CTF challenge design."
+          />
+          <Focus
+            title="Exploit Development"
+            body="Windows-focused exploit development — custom shellcode, SEH overwrites, and ROP chain construction. Currently pursuing OSED."
+          />
+        </div>
+
+        <p className="label-accent mb-4">Building & operating</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-5 text-[14.5px] leading-relaxed">
+          <Focus
+            title="Security Tool Development"
             body="Building and maintaining open-source offensive and defensive tooling in Python, Bash, and C — see the projects page."
           />
           <Focus
-            title="AI automation & workflows"
-            body="Automating security operations and analysis pipelines using OpenCLAW, n8n, and custom AI workflows for triage and reporting."
+            title="AI Automation & Workflows"
+            body="Designing AI-driven workflows for security operations and analysis — OpenCLAW, n8n, and custom automation for triage and reporting."
           />
           <Focus
-            title="Reverse engineering"
-            body="Static and dynamic binary analysis. Currently pursuing OSED to deepen Windows exploit-development and reversing skills."
+            title="CTF Design & Platforms"
+            body="Designing Jeopardy-style CTF challenges across pwn, web, crypto, and forensics, and building the lab and scoring infrastructure that hosts them."
+          />
+          <Focus
+            title="Security Training & Mentorship"
+            body="Practical penetration-testing workshops and team mentorship — including under the Ignite program and across competitive CTF teams."
           />
         </div>
       </section>
@@ -138,12 +175,22 @@ export default function Page() {
             Selected achievements
           </h2>
           <dl className="text-[14.5px] leading-relaxed">
+            <Particular
+              k="2024"
+              v="National Cyber Security Champion — Ignite (Ministry of IT)"
+            />
             <Particular k="2024" v="Hackmasters'24 — Winner, OIC CTF (Istanbul)" />
             <Particular k="2024" v="BlackHat MEA '24 — Finalist (Riyadh)" />
-            <Particular k="2023" v="BlackHat MEA '23 — Finalist" />
+            <Particular
+              k="2023"
+              v="National Cyber Security Champion — Ignite (Ministry of IT)"
+            />
             <Particular k="2023" v="MCS CTF '23 — Winner" />
-            <Particular k="2022" v="Pakistan Cyber Security Challenge — Top 10" />
-            <Particular k="—" v="20+ national hackathon wins" />
+            <Particular
+              k="2022"
+              v="National Cyber Security Champion — Ignite (Ministry of IT)"
+            />
+            <Particular k="—" v="20+ national hackathon & CTF wins" />
           </dl>
         </div>
       </section>

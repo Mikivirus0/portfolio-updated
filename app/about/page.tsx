@@ -20,7 +20,7 @@ export default function About() {
           Umair Sabir
         </h1>
         <p className="display italic text-[1.15rem] sm:text-[1.25rem] text-[var(--ink-soft)] mt-2">
-          Cyber Security Engineer · Islamabad, Pakistan
+          Cyber Security Engineer at AirOverflow · Islamabad, Pakistan
         </p>
       </section>
 
@@ -44,12 +44,11 @@ export default function About() {
         </a>
         <div className="text-[15.5px] leading-[1.75] text-[var(--ink)] pretty">
           <p>
-            I'm a Cyber Security Engineer based in Islamabad, Pakistan. My
+            I'm a Cyber Security Engineer at{" "}
+            <strong>AirOverflow</strong>, based in Islamabad, Pakistan. My
             day-to-day work combines offensive security engagements,
-            development, and AI-driven automation — the kind of role where
-            you spend Monday breaking into a network, Tuesday writing the
-            tooling that finds the next one, and Wednesday automating the
-            workflow that ships the report.
+            cybersecurity tool development, and building the CTF challenges
+            and platforms that AirOverflow runs for the community.
           </p>
           <p className="mt-3">
             I hold a Master's in Cyber Security from{" "}
@@ -196,6 +195,44 @@ export default function About() {
 
       <Ornament />
 
+      {/* ─── Experience ─────────────────────── */}
+      <section className="mb-10">
+        <h2 className="display text-[1.6rem] sm:text-[1.85rem] font-semibold tracking-tight text-[var(--ink)] mb-5">
+          Experience
+        </h2>
+        <div className="space-y-7 max-w-prose">
+          <ExperienceItem
+            role="Cyber Security Engineer"
+            org="AirOverflow"
+            period="2023 — Present"
+            bullets={[
+              "Lead penetration testing engagements across web, API, network, and Active Directory environments.",
+              "Develop and maintain cybersecurity tools used internally and shared with the community.",
+              "Design CTF challenges and build the CTF platforms used for national and international cybersecurity events.",
+            ]}
+          />
+          <ExperienceItem
+            role="Founder"
+            org="ByteBoltSec"
+            period="—"
+            bullets={[
+              "Founded a Pakistan-based cybersecurity practice focused on penetration testing and security training.",
+              "Delivered consulting engagements and training programs for clients and students.",
+            ]}
+          />
+          <ExperienceItem
+            role="Trainer"
+            org="Ignite — Bahria University"
+            period="—"
+            bullets={[
+              "Conducted practical penetration testing workshops for students under the Ignite program at Bahria University.",
+            ]}
+          />
+        </div>
+      </section>
+
+      <Ornament />
+
       {/* ─── Achievements ─────────────────────── */}
       <section className="mb-10">
         <h2 className="display text-[1.6rem] sm:text-[1.85rem] font-semibold tracking-tight text-[var(--ink)] mb-5">
@@ -211,42 +248,48 @@ export default function About() {
               </tr>
             </thead>
             <tbody>
-              <Row y="2024" e="Hackmasters'24 — OIC CTF, Istanbul" r="Winner" highlight />
+              <Row
+                y="2024"
+                e="National Cyber Security Champion — Ignite (Ministry of IT)"
+                r="Winner"
+                highlight
+              />
+              <Row
+                y="2024"
+                e="Hackmasters'24 — OIC CTF, Istanbul"
+                r="Winner"
+                highlight
+              />
               <Row y="2024" e="BlackHat MEA '24 — Riyadh" r="Finalist" />
+              <Row
+                y="2023"
+                e="National Cyber Security Champion — Ignite (Ministry of IT)"
+                r="Winner"
+                highlight
+              />
               <Row y="2023" e="BlackHat MEA '23 — Riyadh" r="Finalist" />
-              <Row y="2023" e="MCS CTF '23 — Military College of Signals" r="Winner" highlight />
-              <Row y="2022" e="Pakistan Cyber Security Challenge (NCCS × AU)" r="Top 10" />
+              <Row
+                y="2023"
+                e="MCS CTF '23 — Military College of Signals"
+                r="Winner"
+                highlight
+              />
+              <Row
+                y="2022"
+                e="National Cyber Security Champion — Ignite (Ministry of IT)"
+                r="Winner"
+                highlight
+              />
+              <Row
+                y="2022"
+                e="Pakistan Cyber Security Challenge (NCCS × AU)"
+                r="Top 10"
+              />
               <Row y="2022" e="NASCON '22 CTF — FAST-NUCES" r="4th place" />
-              <Row y="—" e="National hackathons & competitions" r="20+ wins" />
+              <Row y="—" e="National hackathons & CTFs" r="20+ wins" />
             </tbody>
           </table>
         </div>
-      </section>
-
-      <Ornament />
-
-      {/* ─── Roles & community ─────────────────────── */}
-      <section className="mb-10">
-        <h2 className="display text-[1.6rem] sm:text-[1.85rem] font-semibold tracking-tight text-[var(--ink)] mb-5">
-          Roles & community
-        </h2>
-        <ul className="text-[15px] leading-[1.7] space-y-3 text-[var(--ink)] max-w-prose">
-          <li>
-            <strong>Founder, ByteBoltSec</strong> — a Pakistan-based
-            cybersecurity practice focused on practical penetration testing
-            and security training.
-          </li>
-          <li>
-            <strong>Core member, AirOverflow</strong> — designing CTF
-            challenges and lab infrastructure for national and international
-            cybersecurity events.
-          </li>
-          <li>
-            <strong>Trainer</strong> — practical penetration testing
-            workshops for students under the Ignite program at Bahria
-            University.
-          </li>
-        </ul>
       </section>
 
       <Ornament />
@@ -257,6 +300,14 @@ export default function About() {
           Currently
         </h2>
         <ul className="text-[15px] leading-[1.7] space-y-2 text-[var(--ink-soft)] max-w-prose">
+          <li>
+            Running penetration testing engagements at{" "}
+            <strong className="text-[var(--ink)]">AirOverflow</strong>.
+          </li>
+          <li>
+            Designing and maintaining CTF challenges and platforms for
+            AirOverflow's events.
+          </li>
           <li>
             Studying for <strong className="text-[var(--ink)]">OSED</strong> —
             Windows exploit development, custom shellcode, SEH chains.
@@ -319,6 +370,47 @@ export default function About() {
         </ul>
       </section>
     </article>
+  );
+}
+
+function ExperienceItem({
+  role,
+  org,
+  period,
+  bullets,
+}: {
+  role: string;
+  org: string;
+  period: string;
+  bullets: string[];
+}) {
+  return (
+    <div>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-2">
+        <div>
+          <h3 className="display text-[1.15rem] font-semibold text-[var(--ink)] leading-tight">
+            {role}{" "}
+            <span className="text-[var(--accent)]">·</span>{" "}
+            <span className="font-normal italic text-[var(--ink-soft)]">
+              {org}
+            </span>
+          </h3>
+        </div>
+        <span className="label numerals-tab text-[var(--ink-faint)]">
+          {period}
+        </span>
+      </div>
+      <ul className="text-[14.5px] leading-[1.65] text-[var(--ink-soft)] space-y-1.5 pl-4">
+        {bullets.map((b, i) => (
+          <li
+            key={i}
+            className="relative before:content-['—'] before:absolute before:-left-4 before:text-[var(--accent)]"
+          >
+            {b}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
