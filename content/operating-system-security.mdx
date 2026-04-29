@@ -1,0 +1,276 @@
+---
+title: "Operating-System Security: The Mechanisms Standing Between You and Root"
+publishedAt: "2026-04-28"
+summary: "What 'OS security' actually means in 2026 — privilege rings, the reference monitor, KASLR, SMEP/SMAP, KPTI, capabilities, namespaces, syscall filtering — and the recurring vulnerability classes that defeat each one."
+tags: "Operating Systems, Kernel, Privilege Escalation, Defence in Depth"
+---
+
+Almost every interesting class of attack ends, eventually, at the operating system. The web shell wants to read `/etc/shadow`. The phishing payload wants to install a service. The exploit wants to flip a `cred` struct from `uid=1000` to `uid=0`. Whatever the entry vector, the operator's last mile is always the kernel — and the kernel, fortunately and unfortunately, has spent forty years building defences specifically against this last mile.
+
+This essay is a tour of those defences. Not the *features* — every textbook lists the features — but the *boundaries they actually defend*, the *attack primitives that defeat them*, and the *practical operator's view* of what's left when you've got SYSTEM/uid 0 in your sights.
+
+## The shape of the problem
+
+Operating-system security is the discipline of saying *no*. No, this user-mode process may not read that page of memory. No, this thread may not execute this region. No, this pid may not signal that pid. No, this file may be opened only with that particular bit set.
+
+Three classical components show up over and over.
+
+<KillChain steps={[
+  { label: "Subjects", tool: "users · processes · threads" },
+  { label: "Objects", tool: "files · sockets · pages · IPC" },
+  { label: "Reference monitor", tool: "the kernel itself" },
+]} />
+
+A *subject* (someone with intent), an *object* (something with state), and a *reference monitor* (the bouncer at the door). The reference monitor is the kernel — and specifically the smallest part of the kernel that *must* be trusted, the **Trusted Computing Base** (TCB). The whole game of OS security is keeping the TCB small, correct, and isolated from the subjects it polices.
+
+The textbook bouncer has three properties:
+
+- **Tamper-proof.** Subjects can't reach in and modify the bouncer.
+- **Always-invoked.** Every access goes through it; no side door.
+- **Verifiable.** You can convince yourself, with bounded effort, that it's correct.
+
+When an operator finds a privilege escalation, **at least one** of those three has failed.
+
+## Privilege rings: the hardware boundary
+
+At the lowest layer, the CPU itself enforces a privilege boundary. On x86 there are four rings (0–3). In practice everyone uses two of them: ring 0 for the kernel, ring 3 for user-mode. The CPU refuses to execute privileged instructions, touch certain MSRs, or access kernel memory unless the current ring permits it.
+
+<Diagram num="1" caption="The classical x86 ring model and the boundary that matters in practice. Hypervisors live below ring 0; user-mode lives above ring 3.">
+  <svg viewBox="0 0 720 280" width="100%" style={{ maxWidth: 720, color: "var(--ink)" }} xmlns="http://www.w3.org/2000/svg">
+    <g fontFamily="Newsreader, Georgia, serif" fontSize="13">
+      {/* concentric rings */}
+      <circle cx="360" cy="150" r="120" fill="var(--paper)" stroke="currentColor" strokeWidth="1" />
+      <circle cx="360" cy="150" r="90"  fill="var(--paper)" stroke="currentColor" strokeWidth="1" />
+      <circle cx="360" cy="150" r="60"  fill="var(--paper)" stroke="currentColor" strokeWidth="1" />
+      <circle cx="360" cy="150" r="30"  fill="var(--paper)" stroke="var(--accent)" strokeWidth="1.6" />
+
+      <text x="360" y="150" fill="var(--accent)" textAnchor="middle" fontWeight="700">VMX</text>
+      <text x="360" y="165" fill="var(--accent)" textAnchor="middle" fontSize="10" fontStyle="italic">hypervisor</text>
+
+      <text x="360" y="106" fill="currentColor" textAnchor="middle" fontWeight="600">Ring 0 — kernel</text>
+      <text x="360" y="76" fill="currentColor" textAnchor="middle" fontStyle="italic">Ring 1·2 (unused)</text>
+      <text x="360" y="44" fill="currentColor" textAnchor="middle" fontWeight="600">Ring 3 — user-mode</text>
+
+      {/* annotations */}
+      <line x1="200" y1="44"  x2="280" y2="44" stroke="var(--accent)" strokeWidth="1" />
+      <text x="190" y="48" fill="var(--accent)" textAnchor="end" fontStyle="italic">your shell</text>
+
+      <line x1="540" y1="106" x2="430" y2="116" stroke="var(--accent)" strokeWidth="1" />
+      <text x="552" y="110" fill="var(--accent)" fontStyle="italic">syscall handler</text>
+
+      <line x1="540" y1="150" x2="395" y2="150" stroke="var(--accent)" strokeWidth="1" />
+      <text x="552" y="154" fill="var(--accent)" fontStyle="italic">page tables</text>
+
+      <line x1="540" y1="194" x2="430" y2="184" stroke="var(--accent)" strokeWidth="1" />
+      <text x="552" y="198" fill="var(--accent)" fontStyle="italic">VMENTER / VMEXIT</text>
+    </g>
+  </svg>
+</Diagram>
+
+Crossing rings is expensive *by design* — the CPU saves and restores state on a context switch — but the protection it provides is the bedrock for everything else. A user-mode process *cannot* directly read kernel pages, *cannot* mask interrupts, *cannot* re-program the IDT. To do anything privileged it has to ask the kernel, and the kernel decides.
+
+That asking happens through one mechanism: **the system call**.
+
+## The system call boundary
+
+A syscall is the only legitimate way for ring 3 to enter ring 0. On modern x86-64 Linux it's the `SYSCALL` instruction; on Windows it's `SYSCALL` too (or `int 0x2e` on legacy paths). The CPU jumps to a fixed, kernel-controlled handler stored in `IA32_LSTAR`. From the operator's perspective, this is the entire interface to the kernel:
+
+<Terminal title="syscall — the whole interface, on Linux x86-64">
+{`# call number in rax, args in rdi, rsi, rdx, r10, r8, r9
+# x86-64 Linux
+
+mov  rax, 0x3b      ; SYS_execve
+mov  rdi, &"/bin/sh"
+xor  rsi, rsi        ; argv = NULL
+xor  rdx, rdx        ; envp = NULL
+syscall              ; ← ring transition`}
+</Terminal>
+
+There are roughly 350 of them on Linux and a few thousand on Windows (counting both Nt* and Win32k). Every one of them is a potential bug. Every one of them is potential attack surface. *This is the largest bounded interface in computing*, and most of OS security is the engineering required to keep it correct.
+
+Three properties matter to an operator:
+
+1. **Argument validation.** Kernel routines have to assume every byte from user-mode is hostile. Pointer arguments must be validated with `copy_from_user`/`ProbeForRead`; struct sizes have to be re-checked; integer overflows in length fields have to be considered. Forgetting one is how `CVE-2016-5195` (Dirty COW) and a thousand others happened.
+
+2. **State machines.** Many syscalls expect to be called in a certain order. `bind` then `listen` then `accept`. Reordering them, or calling them concurrently from two threads on the same fd, is how race conditions become exploits. *Most modern Linux LPEs are races.*
+
+3. **Speculation.** As of 2018 we know the CPU can leak data across the ring boundary by speculatively executing past the syscall mode-switch. Mitigations are now permanent (KPTI, IBRS, retpoline, eIBRS) and they are very expensive.
+
+## Memory protection: the layered cake
+
+Inside the kernel, the next layer of defence is the page-table machinery — a set of features added piece by piece over thirty years.
+
+<Diagram num="2" caption="The memory-protection cake, from oldest at the bottom to newest at the top. Each layer was added to defeat a class of exploit the layer below could not stop.">
+  <svg viewBox="0 0 720 380" width="100%" style={{ maxWidth: 720, color: "var(--ink)" }} xmlns="http://www.w3.org/2000/svg">
+    <g fontFamily="Newsreader, Georgia, serif" fontSize="12">
+      {[
+        { y: 30,  label: "CET — shadow stack & IBT",       desc: "Hardware ROP/JOP defeat (Tiger Lake +)" },
+        { y: 70,  label: "KPTI — kernel page-table isolation", desc: "Defeats Meltdown speculative leak" },
+        { y: 110, label: "SMAP — supervisor-mode access prevention", desc: "Kernel cannot read user pages without STAC/CLAC" },
+        { y: 150, label: "SMEP — supervisor-mode execution prevention", desc: "Kernel cannot execute user pages" },
+        { y: 190, label: "KASLR — kernel address-space layout randomisation", desc: "Randomises kernel base each boot" },
+        { y: 230, label: "Stack canaries", desc: "Detects linear stack overflow before return" },
+        { y: 270, label: "ASLR — user-space layout randomisation", desc: "Randomises libc, heap, stack, exe" },
+        { y: 310, label: "DEP / NX — non-executable pages", desc: "Data pages cannot run as code" },
+        { y: 350, label: "Page tables + ring boundary", desc: "The original isolation primitive" },
+      ].map((row) => (
+        <g key={row.y}>
+          <rect x="40" y={row.y - 14} width="280" height="28" fill="var(--paper)" stroke="currentColor" strokeWidth="1" />
+          <text x="50" y={row.y + 4} fill="currentColor" fontWeight="600">{row.label}</text>
+          <text x="340" y={row.y + 4} fill="#8A7E6C" fontStyle="italic">{row.desc}</text>
+        </g>
+      ))}
+      <text x="40" y="378" fill="var(--accent)" fontStyle="italic" fontSize="11">↑ each layer was added to defeat the previous layer's bypass</text>
+    </g>
+  </svg>
+</Diagram>
+
+The order matters. **DEP** killed code injection on the stack, so attackers invented **return-oriented programming**. ROP eats DEP for breakfast — so we got **ASLR** to take the addresses away. Info leaks beat ASLR — so we got **stack canaries** in the prologue. Stack canaries can be brute-forced over `fork()` — so we got **KASLR** to randomise the kernel itself. KASLR can be defeated by `prefetch` timing — so we got **KPTI** to remove kernel pages from the user view entirely. KPTI is expensive — so we paired it with hardware **CET** (shadow stack + indirect branch tracking) on modern CPUs.
+
+Defence in depth means: when you find one bypass, the next layer is still there.
+
+> An operator's mental model: every mitigation is a *cost*, not a *wall*. Stack canaries cost an info-leak; KASLR costs a leak; SMEP costs a stack-pivot into a kernel gadget chain. The exploit gets longer; it does not get impossible.
+
+## Access control — three different worldviews
+
+Above the hardware, the kernel has to decide *who can do what*. There are three classical models, all in production today, often layered:
+
+### Discretionary access control (DAC)
+
+The Unix model. Each object has an owner, and the owner decides who else gets in. Ten bits per file: `rwx` for owner, group, other.
+
+```bash
+$ ls -l /etc/shadow
+-rw-r----- 1 root shadow 1872 Apr 12 03:04 /etc/shadow
+```
+
+Discretionary because the *user* decides; the kernel only enforces. DAC is fast, simple, and *useless* against a compromised user account. If the attacker is root, the model is silent.
+
+### Mandatory access control (MAC)
+
+A second, system-wide policy on top of DAC that *neither* the user *nor* root can override. SELinux and AppArmor on Linux; integrity levels and AppContainer on Windows. The policy is set by an administrator; even a process running as root is denied if the MAC label says so.
+
+<Terminal title="selinux — refusing root">
+{`# even as root, the policy says no
+$ id
+uid=0(root) gid=0(root)
+
+$ cat /etc/shadow
+cat: /etc/shadow: Permission denied
+
+$ ausearch -m AVC -ts recent | tail -3
+type=AVC msg=audit(...) avc:  denied  { read } for  pid=4421
+  scontext=system_u:system_r:httpd_t:s0
+  tcontext=system_u:object_r:shadow_t:s0  tclass=file`}
+</Terminal>
+
+MAC is what stops a compromised webserver from reading `/etc/shadow` even though `/etc/shadow` is technically readable by root. It is also why a real engagement so often ends with *"we got root in `httpd_t` context — now what?"*
+
+### Capabilities and ACLs
+
+The middle path: instead of giant binary "you are root or you are not", break root's powers into **capabilities** (Linux) or fine-grained **ACL entries** (Windows). A process can have `CAP_NET_BIND_SERVICE` (bind to port 80) without having `CAP_SYS_ADMIN` (own the world).
+
+```bash
+$ getcap /usr/bin/ping
+/usr/bin/ping cap_net_raw=ep
+
+# attacker on a misconfigured box:
+$ getcap -r / 2>/dev/null
+/opt/legacy/snapshot  cap_dac_read_search,cap_sys_ptrace=ep
+```
+
+That `cap_sys_ptrace` line is a privilege-escalation finding: any process can be ptraced, including root processes. An operator finds these by walking the filesystem with `getcap -r /` and `find / -perm -4000` and noting which binaries should not have the powers they have.
+
+## Isolation primitives — the modern obsession
+
+For about twenty years the answer to "how do I run untrusted code safely" was *don't*. Then it was *VMs*. Now it is **process-level isolation primitives** baked into the kernel, used by container runtimes, browsers, and sandboxes.
+
+The three workhorses on Linux are:
+
+- **Namespaces.** `pid`, `mount`, `net`, `ipc`, `uts`, `user`, `cgroup`. A process inside a `pid` namespace sees a different `/proc`. A process inside a `net` namespace sees a different `lo`. Chained together they produce the illusion of a private machine — a container.
+- **cgroups.** Resource accounting and limits. Not a security boundary by itself, but a denial-of-service boundary: the sandboxed process cannot starve the host.
+- **seccomp-bpf.** A per-process syscall filter. The process declares "I will only ever call these 30 syscalls"; the kernel kills the process if it tries any of the others.
+
+<Diagram num="3" caption="A modern sandboxed process. Each layer reduces the attack surface by removing a class of capability the workload does not need.">
+  <svg viewBox="0 0 720 280" width="100%" style={{ maxWidth: 720, color: "var(--ink)" }} xmlns="http://www.w3.org/2000/svg">
+    <g fontFamily="Newsreader, Georgia, serif" fontSize="12">
+      <rect x="40" y="40" width="640" height="200" fill="var(--paper)" stroke="currentColor" strokeWidth="1.4" />
+      <text x="60" y="34" fill="currentColor" fontWeight="600">host kernel</text>
+
+      <rect x="60" y="60" width="600" height="160" fill="var(--paper)" stroke="currentColor" strokeWidth="1" />
+      <text x="80" y="54" fill="currentColor" fontStyle="italic" fontSize="11">+ namespaces (pid, mount, net, user)</text>
+
+      <rect x="80" y="80" width="560" height="120" fill="var(--paper)" stroke="currentColor" strokeWidth="1" />
+      <text x="100" y="74" fill="currentColor" fontStyle="italic" fontSize="11">+ cgroup (cpu, memory, pids)</text>
+
+      <rect x="100" y="100" width="520" height="80" fill="var(--paper)" stroke="var(--accent-2)" strokeWidth="1.2" />
+      <text x="120" y="94" fill="var(--accent-2)" fontStyle="italic" fontSize="11">+ seccomp-bpf (syscall filter, default-deny)</text>
+
+      <rect x="120" y="120" width="480" height="40" fill="var(--paper)" stroke="var(--accent)" strokeWidth="1.4" />
+      <text x="360" y="146" fill="var(--accent)" textAnchor="middle" fontWeight="700">workload — drops capabilities, no_new_privs=1</text>
+    </g>
+  </svg>
+</Diagram>
+
+This is the layout of every well-engineered sandbox you've used in the last decade — Chrome's renderer, Docker's default profile, systemd's `ProtectSystem=strict`, Firefox's content process. The interesting question is always **what's the syscall filter** and **what capabilities did they drop**. That's where the bugs are.
+
+## Vulnerability classes in 2026
+
+Here is the set of bug classes that produce most modern OS-level CVEs. None are new. All are still happening.
+
+<Table data={{
+  headers: ["Class", "Where it lives", "Operator's note"],
+  rows: [
+    ["Use-after-free (UAF)", "any object with a refcount", "Heap-spray to control the freed slot, then trigger the dangling deref."],
+    ["Type confusion", "unions, voidptr-as-T", "Force the kernel to treat object A as type B; usually equals arbitrary write."],
+    ["Race condition / TOCTOU", "filesystem, sockets, signals", "Modern LPE bread-and-butter; multi-core makes them probabilistically reliable."],
+    ["Integer overflow → buffer", "size_t arithmetic on user input", "Validate one bound, the other wraps; classic syscall pattern."],
+    ["Out-of-bounds access", "fixed-size arrays + user index", "Read leaks ASLR; write becomes the primitive."],
+    ["Logic / authorisation flaw", "container exits, namespace setup", "No memory bug; just 'the kernel allowed an action it shouldn't have'."],
+    ["Side channel / speculation", "shared CPU resources", "Spectre / Meltdown / MDS family; usually info-leak only, but enough to defeat KASLR."],
+    ["Driver / IOCTL", "third-party kernel modules", "Where most Windows kernel exploits actually live in 2026."],
+  ]
+}} />
+
+The general shape of a kernel exploit — once you have a primitive — is depressingly stable across years and operating systems:
+
+<KillChain steps={[
+  { label: "Trigger", tool: "syscall sequence" },
+  { label: "Primitive", tool: "OOB read · UAF · etc." },
+  { label: "Leak KASLR", tool: "info-leak gadget" },
+  { label: "Hijack flow", tool: "fn ptr · cred struct" },
+  { label: "Elevate", tool: "uid → 0 / SYSTEM" },
+  { label: "Cleanup", tool: "fix corrupted state" },
+]} />
+
+The "cleanup" step is the one that separates an exploit that demos to one that *runs in production* — leaving the kernel in a state where it doesn't panic five minutes later when someone closes the wrong fd.
+
+## A practical operator's hardening checklist
+
+Switching sides for a moment: when I'm hardening a host, this is the list I run, in order. It isn't comprehensive. It is the highest-leverage list.
+
+1. **Boot integrity.** UEFI Secure Boot enabled, vendor keys only. `tpm2_pcrread sha256:0,1,2,4,7` to confirm measured boot is producing sane values.
+2. **Kernel mitigations.** `CONFIG_SLAB_FREELIST_RANDOM=y`, `CONFIG_SLAB_FREELIST_HARDENED=y`, `CONFIG_FORTIFY_SOURCE=y`, `CONFIG_INIT_ON_ALLOC_DEFAULT_ON=y`. Check with `grep CONFIG_ /boot/config-$(uname -r)`.
+3. **Mitigations at runtime.** `cat /sys/devices/system/cpu/vulnerabilities/*` — every entry should read *Mitigation:* not *Vulnerable*.
+4. **MAC enforcing.** `getenforce` returns `Enforcing` (SELinux) or `aa-status` shows enforce-mode profiles (AppArmor). Do not run permissive in production.
+5. **Setuid audit.** `find / -perm -4000 -type f 2>/dev/null` and reduce the list. Most distros ship with twenty-plus; you probably need five.
+6. **Capabilities audit.** `getcap -r / 2>/dev/null`. Anything with `cap_sys_admin`, `cap_dac_read_search`, or `cap_sys_ptrace` is an LPE waiting to happen.
+7. **Syscall reduction for services.** For each service, write a seccomp profile or use `systemd`'s `SystemCallFilter=@system-service` with explicit deny lists. Use `strace -c` during normal operation to derive the minimum set.
+8. **Kernel modules.** `lsmod` and `modprobe.blacklist` everything you don't ship. Most third-party drivers are signed garbage; if you don't need it, don't load it.
+9. **Update cadence.** `unattended-upgrades` or equivalent. Most LPEs are patched within days; the half-life of an n-day on a typical fleet is the gap between patch release and your patch window.
+10. **Audit pipeline.** `auditd` rules for `execve`, `connect`, and `open` on sensitive paths, shipped to a central store. You will not catch the breach in real time; you want a forensic trail.
+
+## What to keep in mind
+
+Operating-system security is the only domain in computing where defence-in-depth is the *prevailing paradigm*, not the buzzword. Each ring, each mitigation, each filter assumes the thing above it has already been bypassed.
+
+For an operator, that's the practical lesson: don't chase the perfect exploit. Chase **chains**. Each layer above is one bug, one info leak, one timing hint. For a defender, the same lesson, mirrored: don't chase the perfect mitigation. Stack the layers; the exploit gets *longer* — and longer exploits get *unreliable*, and unreliable exploits get *caught*.
+
+> The kernel is not the wall. The kernel is the last of many walls. Build them all.
+
+If you found this useful, my essay on{" "}
+[Active Directory attack paths](/blog/active-directory-attack-paths){" "}
+shows what an operator does after the kernel has decided to let them in, and{" "}
+[OSED notes on writing custom shellcode](/blog/osed-shellcode-from-scratch){" "}
+covers the *very last mile* — the thing the kernel finally allows the
+attacker to execute.
