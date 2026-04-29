@@ -1,0 +1,273 @@
+---
+title: "Fifty-Three Bytes: When the ELF Header Becomes Its Own Program"
+publishedAt: "2026-04-29"
+summary: "A forensic walk through the smallest functional ELF executable on Linux x86 — 53 bytes that is mathematically smaller than the 52-byte ELF header itself. Header overlap, the mul-ecx zeroing trick, the kernel checks that draw the modern floor, and what every static analyser in the room misses."
+tags: "ELF, Binary Golf, Linux Kernel, Exploit Dev"
+---
+
+There is a contest, very old and entirely unhelpful in any practical sense, called *binary golf*. The goal is to make a working executable as small as possible. On Linux x86, the current floor — the smallest binary that will load on a modern kernel and spawn a `/bin/sh` — is **53 bytes**. That number is, by any reasonable reading of the ELF specification, not allowed to exist. The minimum legal binary should be 84 bytes (a 52-byte ELF header plus one 32-byte program header). The fact that 53 is achievable tells you something *very* particular about the gap between specifications and the kernels that pretend to read them.
+
+This essay is a forensic walk through that gap. We'll dismantle the ELF format, watch the kernel loader do its actual job, slip executable code into fields that are supposed to hold metadata, and end with a binary in which the *file header* is *the program*. Along the way we'll see why the older 45-byte binary stopped working, why x86 is uniquely friendly to this kind of cruelty, and why every static-analysis tool in the room sees a corrupted file while the kernel sees a perfectly valid program.
+
+## The setting
+
+Most code golf is impractical. This is not. Tiny ELFs are useful in three real situations: malware stagers that have to fit in an exploitation buffer, embedded firmware where bytes-per-block actually matters, and **memory-resident execution** — `memfd_create` plus `fexecve`, where the binary never touches disk and 4-KiB block alignment doesn't help you.
+
+We'll work in that third setting throughout. A small loader harness — `server.c`, sketched below — creates an anonymous file descriptor in RAM, writes our binary into it, and asks the kernel to execute the descriptor:
+
+<Terminal title="server.c — the harness">
+{`int fd = memfd_create("golf", 0);
+read(STDIN_FILENO, buffer, 79);          // hard cap: 79 bytes
+if (memcmp(buffer, "\\x7fELF", 4) != 0) { /* reject */ }
+write(fd, buffer, n);
+fexecve(fd, argv, envp);                 // execute from RAM`}
+</Terminal>
+
+Two things matter about this harness. First, the binary must be entirely self-contained: no dynamic linking, no \`/lib/ld-linux.so\`, no PT_INTERP — there is no room in 53 bytes for any of that. Second, the harness validates only the four magic bytes. Everything else is the kernel's problem.
+
+## What an ELF actually is
+
+An ELF file is two structures glued together: an **ELF header** (Ehdr) and a **program header table** (PHT). On 32-bit x86 (ELF32) the header is exactly 52 bytes, and a single program-header entry is 32 bytes. The header points to the PHT via the `e_phoff` field; the PHT tells the kernel which segments to map into memory and where.
+
+<Diagram num="1" caption="The standard ELF32 header. Fifty-two bytes of metadata that, in a compliant binary, must be followed by a program header table before any code can appear.">
+  <svg viewBox="0 0 720 360" width="100%" style={{ maxWidth: 720, color: "var(--ink)" }} xmlns="http://www.w3.org/2000/svg">
+    <g fontFamily="Newsreader, Georgia, serif" fontSize="12">
+      {[
+        { y: 22,  off: "0x00", name: "e_ident",     size: "16", desc: "Magic + class + data + padding" },
+        { y: 56,  off: "0x10", name: "e_type",      size: "2",  desc: "ET_EXEC = 2 / ET_DYN = 3" },
+        { y: 88,  off: "0x12", name: "e_machine",   size: "2",  desc: "EM_386 = 3" },
+        { y: 120, off: "0x14", name: "e_version",   size: "4",  desc: "Always 1" },
+        { y: 152, off: "0x18", name: "e_entry",     size: "4",  desc: "Virtual address of first instruction" },
+        { y: 184, off: "0x1C", name: "e_phoff",     size: "4",  desc: "Offset to program header table" },
+        { y: 216, off: "0x20", name: "e_shoff",     size: "4",  desc: "Section header table — not used at exec time" },
+        { y: 248, off: "0x24", name: "e_flags",     size: "4",  desc: "Architecture-specific — ignored" },
+        { y: 280, off: "0x28", name: "e_ehsize",    size: "2",  desc: "Size of this header — ignored" },
+        { y: 296, off: "0x2A", name: "e_phentsize", size: "2",  desc: "Size of one PHT entry. STRICT: must equal sizeof(Phdr)." },
+        { y: 312, off: "0x2C", name: "e_phnum",     size: "2",  desc: "Number of PHT entries. STRICT: must be ≥ 1." },
+        { y: 328, off: "0x2E", name: "e_shentsize", size: "2",  desc: "ignored at exec" },
+        { y: 344, off: "0x30", name: "e_shnum",     size: "2",  desc: "ignored at exec" },
+      ].map((row) => (
+        <g key={row.off}>
+          <rect x="20" y={row.y - 13} width="680" height={row.y > 280 ? 14 : 28} fill="var(--paper)" stroke="currentColor" strokeWidth="0.8" />
+          <text x="32" y={row.y} fill="var(--accent)" fontWeight="600" fontFamily="JetBrains Mono, monospace" fontSize="11">{row.off}</text>
+          <text x="100" y={row.y} fill="currentColor" fontWeight="600" fontFamily="JetBrains Mono, monospace" fontSize="11">{row.name}</text>
+          <text x="220" y={row.y} fill="#8A7E6C" fontStyle="italic">{row.size}</text>
+          <text x="270" y={row.y} fill="currentColor">{row.desc}</text>
+        </g>
+      ))}
+    </g>
+  </svg>
+</Diagram>
+
+The format offers two **views** of the file: a *linking view* (managed by the section header table, used by linkers and `objdump`) and an *execution view* (managed by the program header table, used by the kernel). The kernel does not care about the linking view at all. Drop the section header table entirely and the binary is unlinkable, opaque to most tooling — and perfectly executable.
+
+That's optimisation move number one. Now we have to compress the rest.
+
+## The kernel's actual rules
+
+If you read the System V ABI, you would believe the ELF format is sacred. If you read `fs/binfmt_elf.c`, you find that the Linux loader is a pragmatist. It enforces a small handful of invariants and ignores everything else.
+
+**What it strictly checks.** The four magic bytes (`7F 45 4C 46`). The architecture (`e_machine == EM_386` on a 32-bit x86 system). The type (`e_type` must be `ET_EXEC` or `ET_DYN`). The PHT entry size (`e_phentsize` must equal `sizeof(struct elf_phdr)`, i.e. 32 on 32-bit). The PHT count (`e_phnum >= 1` and not absurdly large).
+
+<Terminal title="fs/binfmt_elf.c — the gates that matter">
+{`if (elf_ex->e_phentsize != sizeof(struct elf_phdr))
+    goto out;
+if (elf_ex->e_phnum < 1 ||
+    elf_ex->e_phnum > 65536U / sizeof(struct elf_phdr))
+    goto out;`}
+</Terminal>
+
+**What it doesn't care about.** `e_ident[7..15]` — the padding bytes after EI_PAD. `e_shoff`, `e_flags`, `e_ehsize`, `e_shentsize`, `e_shnum`, `e_shstrndx`. Whether `e_phoff` points *after* the ELF header or *into* it. Whether the PHT and the header overlap. Whether the file has a section header table at all.
+
+That last item is the lever. The kernel will follow `e_phoff` wherever it points, even into the middle of the ELF header. If you set `e_phoff = 4`, the kernel will start parsing the program header at byte 4 of the file — which is to say, *in the middle of the ELF identification block*. The bytes that say "I am an ELF for x86" will simultaneously be re-interpreted as a program header. Every byte then has to do two jobs.
+
+This is the trick.
+
+## Architectural convergence
+
+To make a single byte stream satisfy *both* the ELF header *and* a program header at the same time, the two structures need to align field by field. Setting `e_phoff = 4` lines them up like this:
+
+<Diagram num="2" caption="The byte-by-byte overlap when e_phoff = 4. Every offset has to satisfy two interpretations simultaneously — ELF header field on the left, program-header field on the right.">
+  <svg viewBox="0 0 720 320" width="100%" style={{ maxWidth: 720, color: "var(--ink)" }} xmlns="http://www.w3.org/2000/svg">
+    <g fontFamily="Newsreader, Georgia, serif" fontSize="11.5">
+      <text x="20" y="20" fill="var(--accent)" fontWeight="700">offset</text>
+      <text x="100" y="20" fill="var(--accent)" fontWeight="700">ELF header</text>
+      <text x="320" y="20" fill="var(--accent)" fontWeight="700">program header</text>
+      <text x="540" y="20" fill="var(--accent)" fontWeight="700">value chosen</text>
+      <line x1="20" y1="28" x2="700" y2="28" stroke="currentColor" strokeWidth="1" />
+
+      {[
+        { y: 50,  off: "0x04", e: "e_ident[4..7]", p: "p_type",         v: "01 01 00 00 → PT_LOAD" },
+        { y: 76,  off: "0x08", e: "e_ident[8..11]", p: "p_offset",      v: "00 00 00 00 → from byte 0" },
+        { y: 102, off: "0x0C", e: "e_ident[12..15]", p: "p_vaddr",      v: "00 00 01 00 → 0x10000" },
+        { y: 128, off: "0x10", e: "e_type",        p: "p_paddr (lo)",   v: "02 00 → ET_EXEC" },
+        { y: 154, off: "0x12", e: "e_machine",     p: "p_paddr (hi)",   v: "03 00 → EM_386" },
+        { y: 180, off: "0x14", e: "e_version",     p: "p_filesz",       v: "35 00 00 00 → 53 bytes" },
+        { y: 206, off: "0x18", e: "e_entry",       p: "p_memsz",        v: "20 00 01 00 → 0x10020" },
+        { y: 232, off: "0x1C", e: "e_phoff",       p: "p_flags",        v: "04 00 00 00 → R+X (read|exec)" },
+        { y: 258, off: "0x20", e: "e_shoff",       p: "p_align",        v: "10 bytes of code live here" },
+      ].map((r) => (
+        <g key={r.off}>
+          <text x="20" y={r.y} fill="var(--accent)" fontFamily="JetBrains Mono, monospace" fontWeight="600">{r.off}</text>
+          <text x="100" y={r.y} fill="currentColor" fontFamily="JetBrains Mono, monospace">{r.e}</text>
+          <text x="240" y={r.y} fill="currentColor" fontFamily="JetBrains Mono, monospace">↔</text>
+          <text x="270" y={r.y} fill="currentColor" fontFamily="JetBrains Mono, monospace">{r.p}</text>
+          <text x="430" y={r.y} fill="currentColor" fontFamily="JetBrains Mono, monospace">→</text>
+          <text x="450" y={r.y} fill="#8A7E6C" fontStyle="italic">{r.v}</text>
+        </g>
+      ))}
+      <text x="20" y="298" fill="var(--accent-2)" fontStyle="italic">— two collisions are serendipity, three are engineering, nine are this binary</text>
+    </g>
+  </svg>
+</Diagram>
+
+A few of those collisions are almost theological in their convenience.
+
+**At offset 4**, the ELF specification requires `e_ident[4]` to be `0x01` (ELFCLASS32). At the same offset, the program header asks for `p_type = 0x00000001` (PT_LOAD). One byte, both rules satisfied — no value other than `0x01` would work, and the spec hands it to us.
+
+**At offset 28**, `e_phoff` must be 4 (we said so). Simultaneously `p_flags` is being read from the same address. A value of 4 there means *Read*, which on most kernels with `READ_IMPLIES_EXEC` (or the explicit way modern kernels handle it for legacy 32-bit programs) gives us read+execute on the segment. That's exactly what we need for the code to run.
+
+These are not coincidences in the cosmic sense. They are coincidences in the engineering sense — Brian Raiter spotted them in the late 1990s and the trick has been refined since. The point is: by choosing one specific value of `e_phoff` and arranging the rest of the header carefully, every byte of the first 32 carries two meanings at once.
+
+## Where does the code live?
+
+We've satisfied the format. We still need somewhere to put the *program*.
+
+Look at the field list again. Between `e_entry` (0x18, used) and `e_phentsize` (0x2A, used) there is a contiguous span of fields the kernel ignores at execution time:
+
+- `e_shoff` at 0x20 (4 bytes)
+- `e_flags` at 0x24 (4 bytes)
+- `e_ehsize` at 0x28 (2 bytes)
+
+That's **ten bytes of dead space inside the header**. We point `e_entry` at it (virtual address `0x10020` in the mapped segment), and we put our payload there.
+
+The payload has to invoke `execve("/bin/sh", NULL, NULL)`. On 32-bit Linux that's syscall 11 (`SYS_execve`), and the calling convention is:
+
+- `eax` = 11
+- `ebx` = pointer to `"/bin/sh"`
+- `ecx` = 0
+- `edx` = 0
+- `int 0x80`
+
+When a process starts, register values are *not* defined — they are whatever the kernel happened to leave behind, typically pointers and stack noise. We can't assume zero. Naïve initialisation costs too many bytes:
+
+<Terminal title="naïve, 11 bytes — too many">
+{`xor eax, eax        ; 31 c0    (2 bytes)
+xor ecx, ecx        ; 31 c9    (2 bytes)
+xor edx, edx        ; 31 d2    (2 bytes)
+mov al, 11          ; b0 0b    (2 bytes)
+; ebx still needs setting → 5 more bytes
+; total: 11 bytes`}
+</Terminal>
+
+There's a better way that uses the **side effects** of the unsigned-multiply instruction. `mul ecx` computes `EDX:EAX = EAX × ECX`. If `ECX` is zero, the result is zero — and it lands in *both* `EDX` and `EAX` simultaneously. So if we first zero `ECX` (two bytes), one `mul` instruction (two bytes) zeros all three of `eax`, `ecx`, and `edx`. Three zeroings for the price of four bytes — except we can do better still: a tail-placed `/bin/sh` string lets us skip the multiply trick entirely on this particular binary, because we have register noise we can spend.
+
+The 53-byte solution writes the code as:
+
+<Terminal title="payload at offset 32 — 9 bytes">
+{`mov al, 11          ; b0 0b           (2 bytes) — execve syscall number
+mov ebx, 0x1002E    ; bb 2e 00 01 00  (5 bytes) — pointer to "/bin/sh"
+int 0x80            ; cd 80           (2 bytes) — trap into kernel
+; one byte of padding to align e_phentsize at 0x2A
+; total: 9 bytes + 1 pad = 10 bytes — fits exactly`}
+</Terminal>
+
+`ecx` and `edx` are *not* explicitly zeroed. On a freshly forked process via `fexecve`, they are usually clean from the kernel side; on noisier paths a `mul ecx`-style three-register zeroing would be safer at the cost of a few bytes. The 53-byte version is operating right at the edge.
+
+After the code, `e_phentsize` and `e_phnum` *must* exist and *must* be valid — the kernel checks them, as we saw in `binfmt_elf.c`. They live at offsets 0x2A and 0x2C, so they cost four more bytes. Then comes the string `"/bin/sh"` at offset 0x2E (46), seven bytes long. 46 + 7 = 53.
+
+That is the floor. There is no way to make it smaller without violating one of the strict checks the kernel actually performs.
+
+## Why the older 45-byte binary stopped working
+
+In 1999, Brian Raiter shipped a 45-byte ELF that worked on Linux 2.2. Anyone who tries it on a modern kernel gets `ENOEXEC`. Why?
+
+The 45-byte construction *truncated the file* before `e_phentsize` and `e_phnum` were even written. The fields simply weren't in the file. On 2.2, `kernel_read` would zero-fill reads past EOF and the loader was permissive enough to keep going — `e_phnum = 0` would be silently treated as "no program headers, use defaults".
+
+Modern kernels — anything from 2.6 onward — added the check we saw above. `e_phnum < 1` is a hard fail. `e_phentsize != sizeof(struct elf_phdr)` is a hard fail. The file therefore *must* physically contain valid bytes at offset 42–45, which pushes the floor up to 46 bytes for the metadata alone, and once you add the seven-byte `/bin/sh` payload string you're at 53.
+
+The migration from 45 to 53 is, in effect, the cost of one decade of kernel sanity checks. As the loader gets stricter, the golf hole gets shorter.
+
+## The artifact
+
+Putting it all together, here is `tiny.asm` — not a compilable assembly program in the conventional sense, but a manually laid-out byte stream where every offset means at least two things:
+
+<Terminal title="tiny.asm — 53 bytes total">
+{`bits 32
+org 0x00010000
+
+  db 0x7F, "ELF"     ; e_ident[0..3]   — magic
+  dd 1               ; p_type          — also e_ident[4..7]
+  dd 0               ; p_offset        — also e_ident[8..11]
+  dd $$              ; p_vaddr=0x10000 — also e_ident[12..15]
+  dw 2               ; e_type=EXEC     — also p_paddr lo
+  dw 3               ; e_machine=386   — also p_paddr hi
+  dd filesize        ; e_version=53    — also p_filesz
+  dd _start          ; e_entry=0x10020 — also p_memsz
+  dd 4               ; e_phoff=4       — also p_flags=R+X
+
+_start:                ; offset 32 — code goes here
+  mov al, 11           ; execve
+  mov ebx, bin_sh      ; → "/bin/sh"
+  int 0x80             ; kernel trap
+  db 0                 ; pad to 0x2A
+
+  dw 0x20              ; e_phentsize = 32 (sizeof Phdr)
+  dw 1                 ; e_phnum     = 1
+
+bin_sh:                ; offset 46
+  db "/bin/sh"
+
+filesize equ $ - $$    ; computed: 53`}
+</Terminal>
+
+Note what's happening at every line: the bytes that decode as *the ELF identifier* `01 01 00 00` (32-bit, little-endian, version 1, padding) decode equally well as a *program-header `p_type` field* with the value `PT_LOAD = 1`. The bytes that say "this is an executable on x86" (`02 00 03 00`) also constitute a `p_paddr` field nobody is going to read. The 53 in `e_version` is also the segment size. **The metadata is the program header is the code is the string.** It is a single byte stream playing every role the kernel asks for.
+
+## What happens when the kernel runs it
+
+Tracing the execution path through the kernel makes the construction concrete:
+
+<KillChain steps={[
+  { label: "fexecve", tool: "user → kernel" },
+  { label: "search_binary_handler", tool: "format detect" },
+  { label: "load_elf_binary", tool: "binfmt_elf.c" },
+  { label: "elf_map", tool: "VA 0x10000 R+X" },
+  { label: "start_thread", tool: "jump to e_entry" },
+  { label: "int 0x80", tool: "→ sys_execve" },
+]} />
+
+The kernel detects the format from the magic bytes, parses the header, finds `e_phoff = 4` and reads exactly *one* program header from there, sees `PT_LOAD` with `vaddr = 0x10000`, `filesz = memsz = 53`, and `flags = R+X`, maps the entire 53-byte file at virtual address `0x10000`, and transfers control to `e_entry = 0x10020`. The CPU then executes `mov al, 11` followed by the rest of the payload, which drops into `int 0x80`, which traps to `sys_execve`, which replaces the process image with `/bin/sh`. From the harness, you see a shell.
+
+## Why this works on x86 and almost nowhere else
+
+x86 is a CISC architecture with **variable-length instructions**. `int 0x80` is two bytes. `mov al, imm8` is two bytes. `inc eax` is one byte. The whole syscall sequence fits in nine bytes. That density is why we can wedge a real program into a ten-byte gap.
+
+Compare to ARM64 or MIPS: fixed 4-byte instruction width. The same syscall sequence is 16–20 bytes minimum, and the format header itself is wider (ELF64 is 64 bytes versus ELF32's 52). The ELF64 floor is roughly 10–14 bytes higher before you've written a single instruction. Binary golf this aggressive is genuinely unique to 32-bit x86.
+
+> Density is destiny. The reason the 53-byte trick is impossible on 64-bit is not that anyone made the kernel stricter — it is that the instruction set itself has fewer one-byte operations to spend.
+
+## What this means for security tooling
+
+The semantic gap between *what the spec says a binary is* and *what the kernel will execute* is also the gap between *what your AV thinks a binary is* and *what fires on the target*. Almost every static analyser I've ever evaluated relies on at least one of the following heuristics:
+
+- "A valid executable has a section header table." — *we have none.*
+- "The entry point lives in a code section." — *our entry point is inside the ELF header.*
+- "The program header table follows the ELF header." — *the program header table **is** the ELF header.*
+
+Run our 53-byte binary through `readelf -a` and the tool will report errors. It looks at `e_shoff` (offset 0x20), reads `0xB00B` (which is actually `mov al, 11`), interprets that as a section-header table offset, and gets confused — there is nothing at `0xB00B` in a 53-byte file. `readelf` will tell you the binary is truncated or broken. The kernel does not care, because the kernel never read `e_shoff` in the first place.
+
+This is the entire trick: **an attacker can present a binary that looks malformed to every tool an analyst will reach for, yet executes perfectly on the target**. Heuristic-based detection silently misses it. Behavioural detection still has a chance — `execve("/bin/sh")` is loud — but the static layer is bypassed by construction.
+
+## The bigger lesson
+
+When you watch the kernel actually load this thing, an old idea becomes very tangible. **Code is data, data is code, and the boundary between them is whatever the implementation chooses to enforce.** Specifications describe what an executable *should* be. Loaders define what an executable *is*. In the gap between the two lives a 53-byte shell.
+
+For an operator, the practical takeaway is to look at binaries the way the kernel looks at them — `binfmt_elf.c` is 1,800 lines of C and reading them is a better afternoon than another CTF. For a defender, the takeaway is that any tool whose worldview comes from the System V ABI is, by construction, one ELF golf away from being wrong. Pair static analysis with behavioural and you stop caring whether the file *looks* valid.
+
+The 53-byte ELF is a compression artifact of a much older and much more general fact: in the long argument between specification and implementation, the implementation always wins.
+
+If exploit dev is your thing, my essay on
+[writing custom Windows shellcode from scratch](/blog/osed-shellcode-from-scratch)
+covers a related kind of byte-level surgery. For the post-foothold side of the same world,
+[Active Directory attack paths](/blog/active-directory-attack-paths)
+follows what an operator does after the kernel has decided to let them in.

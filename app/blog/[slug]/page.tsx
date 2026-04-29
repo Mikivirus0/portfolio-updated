@@ -68,29 +68,6 @@ export default async function Blog({ params }) {
 
   return (
     <article>
-      <script
-        type="application/ld+json"
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BlogPosting",
-            headline: post.metadata.title,
-            datePublished: post.metadata.publishedAt,
-            dateModified: post.metadata.publishedAt,
-            description: post.metadata.summary,
-            image: post.metadata.image
-              ? `${metaData.baseUrl}${post.metadata.image}`
-              : `/og?title=${encodeURIComponent(post.metadata.title)}`,
-            url: `${metaData.baseUrl}/blog/${post.slug}`,
-            author: {
-              "@type": "Person",
-              name: metaData.name,
-            },
-          }),
-        }}
-      />
-
       <Folio file="14" subject={`Essay — ${post.metadata.title}`} />
 
       <Link

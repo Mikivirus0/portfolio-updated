@@ -7,6 +7,7 @@ type Metadata = {
   summary: string;
   tags: string;
   image?: string;
+  draft?: string; // "true" hides the post from listings + static generation
 };
 
 function parseFrontmatter(fileContent: string) {
@@ -51,7 +52,9 @@ function getMDXData(dir: string) {
 }
 
 export function getBlogPosts() {
-  return getMDXData(path.join(process.cwd(), "content"));
+  return getMDXData(path.join(process.cwd(), "content")).filter(
+    (post) => post.metadata.draft !== "true",
+  );
 }
 
 export function formatDate(date: string, includeRelative = false) {

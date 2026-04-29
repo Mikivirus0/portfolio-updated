@@ -32,27 +32,38 @@ function RoundedImage(props) {
 }
 
 function Code({ children, ...props }) {
-  let codeHTML = highlight(children);
+  // sugar-high needs a string. MDX may pass array/element children; coerce safely.
+  const codeStr =
+    typeof children === "string"
+      ? children
+      : Array.isArray(children)
+        ? children.join("")
+        : String(children ?? "");
+  let codeHTML = highlight(codeStr);
   return <code dangerouslySetInnerHTML={{ __html: codeHTML }} {...props} />;
 }
 
 function Table({ data }) {
-  let headers = data.headers.map((header, index) => (
-    <th key={index}>{header}</th>
-  ));
-  let rows = data.rows.map((row, index) => (
-    <tr key={index}>
-      {row.map((cell, cellIndex) => (
-        <td key={cellIndex}>{cell}</td>
-      ))}
-    </tr>
-  ));
+  const headers = Array.isArray(data?.headers) ? data.headers : [];
+  const rows = Array.isArray(data?.rows) ? data.rows : [];
   return (
     <table>
       <thead>
-        <tr className="text-left">{headers}</tr>
+        <tr className="text-left">
+          {headers.map((header, index) => (
+            <th key={index}>{header}</th>
+          ))}
+        </tr>
       </thead>
-      <tbody>{rows}</tbody>
+      <tbody>
+        {rows.map((row, index) => (
+          <tr key={index}>
+            {(Array.isArray(row) ? row : []).map((cell, cellIndex) => (
+              <td key={cellIndex}>{cell}</td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
     </table>
   );
 }

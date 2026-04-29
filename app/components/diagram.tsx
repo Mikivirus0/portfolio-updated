@@ -66,17 +66,19 @@ export function Terminal({
 export function KillChain({
   steps,
 }: {
-  steps: { label: string; tool?: string }[];
+  steps?: { label: string; tool?: string }[];
 }) {
+  const safeSteps = Array.isArray(steps) ? steps : [];
+  if (safeSteps.length === 0) return null;
   return (
     <figure className="my-9 not-prose">
       <ol
         className="grid gap-3 sm:gap-4"
         style={{
-          gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`,
+          gridTemplateColumns: `repeat(${safeSteps.length}, minmax(0, 1fr))`,
         }}
       >
-        {steps.map((s, i) => (
+        {safeSteps.map((s, i) => (
           <li
             key={i}
             className="border border-[var(--rule)] bg-[var(--paper-soft)] p-3 text-center relative"
@@ -87,12 +89,12 @@ export function KillChain({
             <div className="display text-[13px] sm:text-[14px] font-semibold text-[var(--ink)] leading-tight">
               {s.label}
             </div>
-            {s.tool && (
+            {s?.tool && (
               <div className="label text-[9.5px] mt-1.5 text-[var(--ink-faint)]">
                 {s.tool}
               </div>
             )}
-            {i < steps.length - 1 && (
+            {i < safeSteps.length - 1 && (
               <span
                 aria-hidden="true"
                 className="hidden md:inline absolute -right-3 top-1/2 -translate-y-1/2 text-[var(--accent)] display italic text-base"
