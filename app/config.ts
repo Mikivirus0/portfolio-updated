@@ -1,5 +1,5 @@
 export const metaData = {
-  baseUrl: "https://portfolio-updated-git-main-mikivirus-projects.vercel.app/",
+  baseUrl: "https://www.mikivirus.me",
   title: "MikiVirus",
   name: "MikiVirus",
   ogImage: "/opengraph-image.png",
