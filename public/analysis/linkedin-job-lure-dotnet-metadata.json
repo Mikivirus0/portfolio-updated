@@ -1,0 +1,66 @@
+{
+  "module_names": [
+    "Dsnfy.exe",
+    ""
+  ],
+  "assembly_names": [
+    "Dsnfy",
+    "1c7a42f2-29bf-42f6-aec4-4aaa88e86554"
+  ],
+  "pinvoke": [
+    {
+      "name": "LoadLibrary",
+      "dll": "kernel32"
+    },
+    {
+      "name": "GetProcAddress",
+      "dll": "kernel32"
+    }
+  ],
+  "manifest_resources": [
+    {
+      "name": "MPdrB4P7jF5djsh28V.IjKIOP9tPG0difdnB9",
+      "offset": 0
+    },
+    {
+      "name": "Mtb7al5gakrS5xeEO9.bn8CZ63qY8rZE71Rld",
+      "offset": 211653
+    },
+    {
+      "name": "iXw09rCLJt8nSV7x0U.mXnsCubMdeKoeQ5tGf",
+      "offset": 222280
+    },
+    {
+      "name": "P0hldaWcFviNQs6vh7.ZuUPbHkdWeZRZttcuV",
+      "offset": 224748
+    }
+  ],
+  "resources": [
+    {
+      "name": "MPdrB4P7jF5djsh28V.IjKIOP9tPG0difdnB9",
+      "size": 211649,
+      "sha256": "f7793095b2f01350cc45621441cc05a7e4c9c30af894456bb10c5b20a39af979",
+      "matches_supplied": true
+    },
+    {
+      "name": "Mtb7al5gakrS5xeEO9.bn8CZ63qY8rZE71Rld",
+      "size": 10623,
+      "sha256": "0ad576f8440f9435cd24eca7c7d6dd4ae1e1e68496da23cac1249a426424839a",
+      "matches_supplied": true
+    },
+    {
+      "name": "iXw09rCLJt8nSV7x0U.mXnsCubMdeKoeQ5tGf",
+      "size": 2464,
+      "sha256": "057a2002580ffc3f97ade78659a6f25d53edbe538ad86920513bc10762fadbb4",
+      "matches_supplied": true
+    },
+    {
+      "name": "P0hldaWcFviNQs6vh7.ZuUPbHkdWeZRZttcuV",
+      "size": 394,
+      "sha256": "88010e2e415a79074c6efe44bf932bffa3fedd7cad54209ae2790fa1819dfccf",
+      "matches_supplied": true
+    }
+  ],
+  "parser_warning": "stream is too small: wanted: 0xffff found: 0x2e00",
+  "interpretation": "Protected/malformed metadata. Parsed names and P/Invoke rows are partial observations, not a family identification or complete behavior analysis. All four resource bytes matched independently supplied exports."
+}

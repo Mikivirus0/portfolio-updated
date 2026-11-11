@@ -1,0 +1,79 @@
+{
+  "method": "Data-only ZIP reads, hashes, decoding and PE header inspection. No sample code executed; no executable entries read or extracted.",
+  "excluded_exe_entries": [
+    "evidence/02_pdf_container/pdf_records/rec3_SearchIndexer.exe",
+    "evidence/03_node_sea/SearchIndexer.exe"
+  ],
+  "artifacts": {
+    "03_node_sea/update.dat": {
+      "size": 5373,
+      "sha256": "259e524643817b4ac87239b47d96cee1c838d4456d4022fbf05b30a709af5800"
+    },
+    "03_node_sea/update_decoded.js": {
+      "size": 11336,
+      "sha256": "bc35f1058a54429a1aa5fcef3f08da25dbaac33cec6eb54dd2f7345aaaf32b70"
+    },
+    "04_stage3/support.ico": {
+      "size": 790806,
+      "sha256": "d71bde27c76fe7a8216ebe239d15da1d43edfed8100f91c77fa4323a4b253261"
+    },
+    "04_stage3/support_decoded_rc4.bin": {
+      "size": 790806,
+      "sha256": "685183fa0f7776299a8008e64ea6f04e35297d5240e69c0ed298af970562868a"
+    },
+    "04_stage3/stage3.js": {
+      "size": 786335,
+      "sha256": "cba2696f7bde7a97b0f9a802076ee42539d69ed529606c8ac979d860edf3bfd9"
+    },
+    "04_stage3/donut_shellcode.bin": {
+      "size": 589151,
+      "sha256": "cb0004d5cead2c6b41b9272bbc144a972cee48ffe2d39c956bc48535850b922b"
+    },
+    "04_stage3/donut_instance_decrypted.bin": {
+      "size": 576900,
+      "sha256": "1138f7234752dba59a2b34baab601c7b90feb9683444c52b9d7e0cf317a95ac1"
+    }
+  },
+  "rc4_output_matches_supplied": true,
+  "rc4_wrapper_inflates_to_stage3": true,
+  "base64_matches_supplied_shellcode": true,
+  "shellcode_prefix": "e8c0cf0800",
+  "chaskey_reference_test_vector_passed": true,
+  "chaskey": {
+    "instance_length": 577472,
+    "key": "b6834ea6be6cfbf14423a625e5be6f95",
+    "counter": "01b23652601fd333e94b22e839f57045",
+    "ciphertext_shellcode_offset": "0x241",
+    "decrypted_length": 576900,
+    "matches_supplied_instance": true,
+    "sha256": "1138f7234752dba59a2b34baab601c7b90feb9683444c52b9d7e0cf317a95ac1"
+  },
+  "decrypted_instance_strings": [
+    "ole32;oleaut32;wininet;mscoree;shell32",
+    "v4.0.30319",
+    "44CPCT3F",
+    "v4.0.30319",
+    "Pkrizlmbayo.Properties"
+  ],
+  "embedded_module": {
+    "size": 571392,
+    "sha256": "32e766ccff6e88717bf8143914c8597af8cc41e70f04939b251b1b96e87ec693",
+    "mz": true,
+    "pe_signature": true,
+    "optional_header_magic": "0x10b",
+    "clr_directory_rva_and_size": [
+      8200,
+      72
+    ],
+    "plaintext_reported_c2_present": false
+  },
+  "pdf_name_fields": {
+    "rec0_decoy_name.bin": "DECOY:EXP_Role_Information_Document.docx",
+    "rec2_name_SearchIndexer.txt": "SearchIndexer.exe",
+    "rec4_name_update_dat.txt": "update.dat",
+    "rec6_name_koffi.txt": "koffi.node",
+    "rec8_name_support_ico.txt": "support.ico"
+  },
+  "update_dat_prefix": "636f6e7374207a3d7265717569726528277a6c696227293b6576616c287a2e69",
+  "update_dat_wrapper_inflates_to_decoded_js": true
+}
